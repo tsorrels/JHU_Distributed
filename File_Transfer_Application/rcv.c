@@ -70,7 +70,39 @@ int main (int argc, char** argv)
     /* event loop */   
     for(;;)
     {
-	
+        temp_mask = mask;
+        timeout.tv_sec = 10;
+        timeout.tv_usec = 0;
+        num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
+        if (num > 0) /* there is a FD that has data to read */
+	{
+            if ( FD_ISSET( sr, &temp_mask) ) /* data ready from socket */
+	    {
+                from_len = sizeof(from_addr);
+                bytes = recvfrom( sr, mess_buf, sizeof(mess_buf), 0,  
+                          (struct sockaddr *)&from_addr, 
+                          &from_len );
+                mess_buf[bytes] = 0;
+                from_ip = from_addr.sin_addr.s_addr;
+
+                printf( "Received from (%d.%d.%d.%d): %s\n", 
+                                (htonl(from_ip) & 0xff000000)>>24,
+                                (htonl(from_ip) & 0x00ff0000)>>16,
+                                (htonl(from_ip) & 0x0000ff00)>>8,
+                                (htonl(from_ip) & 0x000000ff),
+                                mess_buf );
+
+            }else if( FD_ISSET(0, &temp_mask) ) {
+                bytes = read( 0, input_buf, sizeof(input_buf) );
+                input_buf[bytes] = 0;
+                printf( "There is an input: %s\n", input_buf );
+                sendto( ss, input_buf, strlen(input_buf), 0, 
+                    (struct sockaddr *)&send_addr, sizeof(send_addr) );
+            }
+        } else {
+            printf(".");
+            fflush(0);
+        }	
     }
 
 
@@ -81,6 +113,5 @@ int main (int argc, char** argv)
 	exit(1);
     }
     
-
     return 0;
 }
