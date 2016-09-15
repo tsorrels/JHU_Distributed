@@ -24,8 +24,6 @@ typedef struct packet_buffer_type{
 } packet_buffer;
 
 
-
-
 typedef struct ack_payload_type{
     int ack;
     int num_nak;
@@ -34,4 +32,11 @@ typedef struct ack_payload_type{
 
 
 
+/* receiver timer values in nanoseconds*/
+const uint recv_ack_timer = 5000;
+
+
+
+/* snder timer values in nanoseconds*/
+const uint sender_fin_timeout = 5000;
 
