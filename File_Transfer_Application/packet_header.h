@@ -1,12 +1,17 @@
 
+#include "net_include.h"
 
 #define WINDOW_SIZE 10
 #define PAYLOAD_SIZE 1390
 
+enum packet_type{
+    SYN,
+    WAIT
+};
+
 typedef struct packet_header_type {
     int seq_num;
-    int type;
-    int size;
+    packet_type type;
 } packet_header;
 
 
@@ -31,18 +36,17 @@ typedef struct ack_payload_type{
 
 
 typedef struct connection_type{
-    char * ipAddress;
-    int port;
+    struct sockaddr_in socket_address;
     int status; /* syn sent, sending data, finish, whatever */
 
 } connection;
 
 
-/* receiver timer values in nanoseconds*/
+/* receiver timer values in microseconds*/
 const uint recv_ack_timer = 5000;
 
 
 
-/* snder timer values in nanoseconds*/
+/* snder timer values in microseconds*/
 const uint sender_fin_timeout = 5000;
 

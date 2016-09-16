@@ -9,7 +9,6 @@
  */
 
 
-#include "net_include.h"
 #include "packet_header.h"
 
 
@@ -33,12 +32,53 @@ packet_buffer * initializeWindowBuffer()
     return window_buffer;
 }
 
-void processPacket(packet_buffer ** window_buffer, 
-		   char * mess_buf, 
-		   int numBytes, 
-		   int currentFD)
-{
 
+void processPacket(packet_buffer ** window_buffer, char * mess_buf, int numBytes, int currentFD, connection * currentConnection, struct sockaddr_in sockAddr)
+{
+    int sendingSocketTemp;
+    packet * wait_packet;
+    /* check connection */
+    if( currentConnection == NULL)
+    {
+	/* process possible new connection */
+    }
+
+
+    /* else, a connection is alreay active */
+    else if ( (currentConnection->socket_address).sin_addr.s_addr == 
+	      sockAddr.sin_addr.s_addr){
+	
+
+    }
+
+    else
+    {
+	/* create new socket */
+	sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
+	if (ss<0)
+	{
+	    perror("Failed in creating socket to send WAIT; continuing\n");
+	}
+	wait_packet * = malloc(sizeof(packet_header));
+	wait_packet->type = WAIT;
+
+	sendto( sendintSocketTemp, wait_packet, sizeof(packet_header), 0, 
+		(struct sockaddr *)&send_addr, sizeof(send_addr) );
+	
+
+
+	send_addr.sin_family = AF_INET;
+	send_addr.sin_addr.s_addr = host_num; 
+	send_addr.sin_port = htons(PORT);
+
+
+
+	/* send wait */
+
+	/* destroy socket */
+
+
+    }
 
 
     return;
@@ -68,13 +108,12 @@ int main (int argc, char** argv)
     char                  input_buf[80];
     struct timeval        timeout;
 
-
-
     
     int lossRate = atoi(argv[1]);
     int fileIterator = 1;
     int currentFD;
 
+    connection * currentConnection = NULL;
     packet_buffer * window_buffer = initializeWindowBuffer();
 
     printf("initialized window_buffer; seq_num for packet buffer 5 is %d\n",
@@ -129,7 +168,8 @@ int main (int argc, char** argv)
                 from_ip = from_addr.sin_addr.s_addr;
 
 		/* process packet */	
-		processPacket(&window_buffer, mess_buf, numBytes, currentFD);
+		processPacket(&window_buffer, mess_buf, numBytes, currentFD,
+				  currentConnection, from_addr);
 
 /*
                 printf( "Received from (%d.%d.%d.%d): %s\n", 
