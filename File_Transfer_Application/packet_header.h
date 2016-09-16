@@ -12,8 +12,8 @@ typedef struct packet_header_type {
 
 
 typedef struct packet_type{
-    packet_header;
-    char[PAYLOAD_SIZE];
+    packet_header header;
+    char data [PAYLOAD_SIZE];
 } packet;
 
 
@@ -30,6 +30,13 @@ typedef struct ack_payload_type{
     int * num_nacks;
 } ack_payload;
 
+
+typedef struct connection_type{
+    char * ipAddress;
+    int port;
+    int status; /* syn sent, sending data, finish, whatever */
+
+} connection;
 
 
 /* receiver timer values in nanoseconds*/

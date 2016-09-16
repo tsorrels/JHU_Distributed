@@ -15,6 +15,25 @@
 
 #define NAME_LENGTH 80
 
+
+
+packet_buffer * initializeWindowBuffer()
+{
+    int i;
+
+    /* create window buffer */
+    packet_buffer * window_buffer = malloc(WINDOW_SIZE * sizeof(packet_buffer));
+    /* initialize buffer */
+    for( i = 0 ; i < WINDOW_SIZE ; i ++)
+    {
+	window_buffer[i].received = 0;
+	window_buffer[i].seq_num = 0;
+	/* omit initializing buffer for data */
+    }  
+    return window_buffer;
+}
+
+
 int main (int argc, char** argv)
 {    
     /* socket declarations */
@@ -40,6 +59,11 @@ int main (int argc, char** argv)
 
     int lossRate = atoi(argv[1]);
 
+    
+    packet_buffer * window_buffer = initializeWindowBuffer();
+    
+    return 0;
+
     /* set up receive socket */
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
@@ -61,7 +85,6 @@ int main (int argc, char** argv)
     send_addr.sin_family = AF_INET;
     send_addr.sin_addr.s_addr = host_num; 
     send_addr.sin_port = htons(PORT);
-
     
     FD_ZERO( &mask );
     FD_ZERO( &dummy_mask );
