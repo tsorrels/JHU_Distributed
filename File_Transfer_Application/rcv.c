@@ -27,10 +27,21 @@ packet_buffer * initializeWindowBuffer()
     for( i = 0 ; i < WINDOW_SIZE ; i ++)
     {
 	window_buffer[i].received = 0;
-	window_buffer[i].seq_num = 0;
+	window_buffer[i].seq_num = i;
 	/* omit initializing buffer for data */
     }  
     return window_buffer;
+}
+
+void processPacket(packet_buffer ** window_buffer, 
+		   char * mess_buf, 
+		   int numBytes, 
+		   int currentFD)
+{
+
+
+
+    return;
 }
 
 
@@ -51,17 +62,25 @@ int main (int argc, char** argv)
     int                   ss,sr;
     fd_set                mask;
     fd_set                dummy_mask,temp_mask;
-    int                   bytes;
+    int                   numBytes;
     int                   num;
     char                  mess_buf[MAX_MESS_LEN];
     char                  input_buf[80];
     struct timeval        timeout;
 
-    int lossRate = atoi(argv[1]);
+
 
     
+    int lossRate = atoi(argv[1]);
+    int fileIterator = 1;
+    int currentFD;
+
     packet_buffer * window_buffer = initializeWindowBuffer();
-    
+
+    printf("initialized window_buffer; seq_num for packet buffer 5 is %d\n",
+	   window_buffer[5].seq_num);
+
+
     return 0;
 
     /* set up receive socket */
@@ -102,12 +121,17 @@ int main (int argc, char** argv)
             if ( FD_ISSET( sr, &temp_mask) ) /* data ready from socket */
 	    {
                 from_len = sizeof(from_addr);
-                bytes = recvfrom( sr, mess_buf, sizeof(mess_buf), 0,  
+                numBytes = recvfrom( sr, mess_buf, MAX_MESS_LEN, 0,  
                           (struct sockaddr *)&from_addr, 
                           &from_len );
-                mess_buf[bytes] = 0;
+		/* DO NOT NEED BULL BYTE 
+		   mess_buf[bytes] = 0; */
                 from_ip = from_addr.sin_addr.s_addr;
 
+		/* process packet */	
+		processPacket(&window_buffer, mess_buf, numBytes, currentFD);
+
+/*
                 printf( "Received from (%d.%d.%d.%d): %s\n", 
                                 (htonl(from_ip) & 0xff000000)>>24,
                                 (htonl(from_ip) & 0x00ff0000)>>16,
@@ -115,14 +139,18 @@ int main (int argc, char** argv)
                                 (htonl(from_ip) & 0x000000ff),
                                 mess_buf );
 
-            }else if( FD_ISSET(0, &temp_mask) ) {
+*/
+            }
+
+	    /* REMOVE STDIN FROM EVENT FD IN EVENT LOOP 
+	    else if( FD_ISSET(0, &temp_mask) ) {
                 bytes = read( 0, input_buf, sizeof(input_buf) );
                 input_buf[bytes] = 0;
                 printf( "There is an input: %s\n", input_buf );
                 sendto( ss, input_buf, strlen(input_buf), 0, 
                     (struct sockaddr *)&send_addr, sizeof(send_addr) );
-            }
-        } else {
+		    }*/
+        } else { /* timer fired */
             printf(".");
             fflush(0);
         }	

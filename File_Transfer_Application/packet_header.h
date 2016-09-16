@@ -3,7 +3,6 @@
 #define WINDOW_SIZE 10
 #define PAYLOAD_SIZE 1390
 
-
 typedef struct packet_header_type {
     int seq_num;
     int type;
