@@ -4,10 +4,14 @@
 #define WINDOW_SIZE 10
 #define PAYLOAD_SIZE 1390
 
-enum packet_type{
+typedef enum {
     SYN,
-    WAIT
-};
+    WAIT,
+    GO,
+    FIN,
+    FINACK,
+    DATA
+} packet_type;
 
 typedef struct packet_header_type {
     int seq_num;
@@ -46,7 +50,8 @@ typedef struct connection_type{
 const uint recv_ack_timer = 5000;
 
 
-
-/* snder timer values in microseconds*/
+/* sender timer values in microseconds*/
 const uint sender_fin_timeout = 5000;
+
+
 

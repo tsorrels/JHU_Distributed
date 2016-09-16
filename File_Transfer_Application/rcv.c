@@ -33,51 +33,57 @@ packet_buffer * initializeWindowBuffer()
 }
 
 
-void processPacket(packet_buffer ** window_buffer, char * mess_buf, int numBytes, int currentFD, connection * currentConnection, struct sockaddr_in sockAddr)
+void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 {
+    packet_header * response_packet = NULL;
+    int sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sendingSocketTemp<0)
+    {
+	perror("Failed in creating socket to send WAIT; continuing\n");
+    }
+    response_packet = malloc(sizeof(packet_header));
+    response_packet->type = type;
+ 
+    /* send wait, address to whoever sent original packet */
+    sendto(sendingSocketTemp, response_packet, sizeof(packet_header), 0, 
+	   (struct sockaddr *)&sendSockAddr, sizeof(sendSockAddr));
+	
+    /* close temporary socket */
+    close(sendingSocketTemp);
+}
+
+
+void processPacket(packet_buffer ** window_buffer, char * mess_buf, int numBytes, int currentFD, connection * currentConnection, struct sockaddr_in sendSockAddr)
+{
+    packet * sentPacket = mess_buf;
     int sendingSocketTemp;
     packet * wait_packet;
-    /* check connection */
-    if( currentConnection == NULL)
+    packet_type * type;
+
+    /* check if FIN */
+    if(sentPacket->header.type == FIN)
+    {
+	sendResponsePacket(FINACK, sendSockAddr); 
+    }
+
+    /* check if there is a current connection */
+    else if( currentConnection == NULL)
     {
 	/* process possible new connection */
-    }
-
-
-    /* else, a connection is alreay active */
-    else if ( (currentConnection->socket_address).sin_addr.s_addr == 
-	      sockAddr.sin_addr.s_addr){
 	
-
     }
 
+
+    /* check if this is the active connection */
+    else if ( (currentConnection->socket_address).sin_addr.s_addr == 
+	      sendSockAddr.sin_addr.s_addr){
+	
+    }
+
+    /* send wait */
     else
     {
-	/* create new socket */
-	sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
-	if (ss<0)
-	{
-	    perror("Failed in creating socket to send WAIT; continuing\n");
-	}
-	wait_packet * = malloc(sizeof(packet_header));
-	wait_packet->type = WAIT;
-
-	sendto( sendintSocketTemp, wait_packet, sizeof(packet_header), 0, 
-		(struct sockaddr *)&send_addr, sizeof(send_addr) );
-	
-
-
-	send_addr.sin_family = AF_INET;
-	send_addr.sin_addr.s_addr = host_num; 
-	send_addr.sin_port = htons(PORT);
-
-
-
-	/* send wait */
-
-	/* destroy socket */
-
-
+	sendResponsePacket(WAIT, sendSockAddr);
     }
 
 
