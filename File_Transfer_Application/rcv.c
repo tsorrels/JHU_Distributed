@@ -14,14 +14,23 @@
 
 #define NAME_LENGTH 80
 
+receiver_state_type state;
+connection * currentConnection;
+packet_buffer * window_buffer;
+int retryCounter = 0;
 
 
-packet_buffer * initializeWindowBuffer()
+void closeConnection();
+void initializeWindowBuffer();
+void sendResponsePacket();
+void handleTimeout();
+void processDataPacket();
+
+void initializeWindowBuffer()
 {
     int i;
-
     /* create window buffer */
-    packet_buffer * window_buffer = malloc(WINDOW_SIZE * sizeof(packet_buffer));
+    window_buffer = malloc(WINDOW_SIZE * sizeof(packet_buffer));
     /* initialize buffer */
     for( i = 0 ; i < WINDOW_SIZE ; i ++)
     {
@@ -29,10 +38,9 @@ packet_buffer * initializeWindowBuffer()
 	window_buffer[i].seq_num = i;
 	/* omit initializing buffer for data */
     }  
-    return window_buffer;
 }
 
-
+/* called to send either a FINACK, WAIT, or GO packet */
 void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 {
     packet_header * response_packet = NULL;
@@ -53,39 +61,115 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 }
 
 
-void processPacket(packet_buffer ** window_buffer, char * mess_buf, int numBytes, int currentFD, connection * currentConnection, struct sockaddr_in sendSockAddr)
+void handleTimeout()
 {
-    packet * sentPacket = mess_buf;
+    switch(state)
+    {
+    case WAITING_DATA:
+	free(currentConnection);
+	state = IDLE;
+	break;
+
+    case RECV_DATA:
+	if (retryCounter == RECV_NUM_RETRY_ACK)
+	{
+	    closeConnection();
+	}
+
+	else
+	{
+	    /* resend ack/nak */
+	    retryCounter ++;
+	}
+	break;
+	
+    default:
+	break;
+
+    }
+}
+
+
+void closeConnection()
+{
+    /* finish writig file */
+    
+    /* destroy connection */
+    free(currentConnection);
+    state = IDLE;
+}
+
+
+void processDataPacket()
+{
+
+}
+
+
+int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_in sendSockAddr)
+{
+    struct timeval        timeout;
+
+    fd_set                mask;
+    fd_set                dummy_mask,temp_mask;
+
+    packet * sentPacket = (packet *)mess_buf;
     int sendingSocketTemp;
     packet * wait_packet;
     packet_type * type;
-
+    int timer = 10; /* 10 usec default */
+    
     /* check if FIN */
     if(sentPacket->header.type == FIN)
     {
+	if (state == RECV_DATA || state == WAITING_DATA)
+	{
+	    closeConnection();
+	}
 	sendResponsePacket(FINACK, sendSockAddr); 
     }
 
-    /* check if there is a current connection */
-    else if( currentConnection == NULL)
+    /* check if SYN and there is no active connection */
+    else if(state == IDLE && sentPacket->header.type == SYN)
     {
-	/* process possible new connection */
-	
+	/* store connection data */
+	(currentConnection) = malloc(sizeof(connection));
+	(currentConnection)->socket_address = sendSockAddr;
+	(currentConnection)->status = 1;
+
+	/* send GO and wait for response */
+	sendResponsePacket(GO, sendSockAddr); 
+	state = WAITING_DATA;
+	timer = recv_go_timer;
     }
 
-
     /* check if this is the active connection */
-    else if ( (currentConnection->socket_address).sin_addr.s_addr == 
+    else if ( currentConnection->socket_address.sin_addr.s_addr == 
 	      sendSockAddr.sin_addr.s_addr){
-	
+	if (sentPacket->header.type == SYN && state == WAITING_DATA)
+	{
+	    /* something is a little out of synch, just resend GO */
+	    sendResponsePacket(GO, sendSockAddr); 
+	    timer = recv_go_timer;
+	}
+	else if (sentPacket->header.type == DATA)
+	{
+	    processDataPacket();
+	    /* maybe set timer here */
+	    timer = recv_data_timer;
+	}
     }
 
     /* send wait */
-    else
+    else if (state != IDLE && sentPacket->header.type == SYN)
     {
 	sendResponsePacket(WAIT, sendSockAddr);
     }
 
+    else
+    {
+	printf("ERROR: reached a catch block indicating sender did not have a rule to process a packet received in this state\n");
+    }
 
     return;
 }
@@ -119,12 +203,9 @@ int main (int argc, char** argv)
     int fileIterator = 1;
     int currentFD;
 
-    connection * currentConnection = NULL;
-    packet_buffer * window_buffer = initializeWindowBuffer();
+    initializeWindowBuffer();
 
-    printf("initialized window_buffer; seq_num for packet buffer 5 is %d\n",
-	   window_buffer[5].seq_num);
-
+    state = IDLE;
 
     return 0;
 
@@ -146,6 +227,8 @@ int main (int argc, char** argv)
     }
 
  
+    /* build sender socket */
+    /*
     send_addr.sin_family = AF_INET;
     send_addr.sin_addr.s_addr = host_num; 
     send_addr.sin_port = htons(PORT);
@@ -153,13 +236,15 @@ int main (int argc, char** argv)
     FD_ZERO( &mask );
     FD_ZERO( &dummy_mask );
     FD_SET( sr, &mask );
+    */
 
     /* event loop */   
+    timeout.tv_sec = 0; /* timeout will never be more than a second */
+    timeout.tv_usec = 10; /* initial timeout value */
     for(;;)
     {
+
         temp_mask = mask;
-        timeout.tv_sec = 10;
-        timeout.tv_usec = 0;
         num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
         if (num > 0) /* there is a FD that has data to read */
 	{
@@ -169,13 +254,12 @@ int main (int argc, char** argv)
                 numBytes = recvfrom( sr, mess_buf, MAX_MESS_LEN, 0,  
                           (struct sockaddr *)&from_addr, 
                           &from_len );
-		/* DO NOT NEED BULL BYTE 
+		/* DO NOT NEED NULL BYTE 
 		   mess_buf[bytes] = 0; */
                 from_ip = from_addr.sin_addr.s_addr;
 
-		/* process packet */	
-		processPacket(&window_buffer, mess_buf, numBytes, currentFD,
-				  currentConnection, from_addr);
+		/* process packet, return new timeout value */	
+		timeout.tv_usec = processPacket(mess_buf, numBytes, currentFD, from_addr);
 
 /*
                 printf( "Received from (%d.%d.%d.%d): %s\n", 
@@ -196,9 +280,10 @@ int main (int argc, char** argv)
                 sendto( ss, input_buf, strlen(input_buf), 0, 
                     (struct sockaddr *)&send_addr, sizeof(send_addr) );
 		    }*/
-        } else { /* timer fired */
-            printf(".");
-            fflush(0);
+        } 
+	else 
+	{ /* timer fired */
+	    handleTimeout();
         }	
     }
 
