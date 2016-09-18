@@ -24,7 +24,11 @@ void closeConnection();
 void initializeWindowBuffer();
 void sendResponsePacket();
 void handleTimeout();
-void processDataPacket();
+int processDataPacket();
+void sendAckNak();
+
+
+
 
 void initializeWindowBuffer()
 {
@@ -38,6 +42,83 @@ void initializeWindowBuffer()
 	window_buffer[i].seq_num = i;
 	/* omit initializing buffer for data */
     }  
+}
+
+packet * buildAckNak()
+{
+    int i;
+    int numNak = 0;
+    ack_payload * payload;
+    int nakArray [WINDOW_SIZE];
+
+    int consecutiveSeqNum = -1;
+    int highestSeqNum = -1;
+
+    /* traverse, find highest seq_num */
+    for (i = 0 ; i < WINDOW_SIZE ; i ++)
+    {
+	if (window_buffer[i].received == 1 &&
+	   (window_buffer[i].seq_num > highestSeqNum) )
+	{
+	    highestSeqNum = window_buffer[i].seq_num;
+	}
+	
+    }
+
+    /* check for anamoly */
+    if (highestSeqNum == -1)
+    {
+	printf("ERROR: buildAckNak did not find packet in winwdow\n");
+    }
+
+    
+    /* traverse, find highest CONSECUTIVE seq_num */
+    if (window_buffer[0].received == 1)
+    {
+	for (i = 0 ; i < highestSeqNum ; i ++)
+	{
+	    if (window_buffer[i].received == 1 ){
+		consecutiveSeqNum = window_buffer[i].seq_num;
+	    }
+	    else{
+		/* break loop */
+		break;
+	    }
+	}
+    }
+    else{
+	/* never got first seq_num in window */
+	
+    }
+
+
+    /* traverse, determine naks */
+    for (i = 0 ; i < highestSeqNum ; i ++){
+	if (window_buffer[i].received == 0){
+	    nakArray[numNak] = window_buffer[i].seq_num;
+	    numNak ++;
+	}
+    }
+
+    packet * ackPacket = malloc(sizeof(packet));
+    ackPacket->header.type = ACK;
+    payload = ackPacket->data;
+    payload->ack = highestSeqNum;
+    payload->num_nak = numNak;    
+
+    memcpy(payload->naks, nakArray, sizeof(int) * numNak);
+ 
+    return ackPacket;
+}
+
+void sendAckNak()
+{
+    packet * ackPacket = buildAckNak();
+
+    /* send packet */
+
+    free(ackPacket);
+
 }
 
 /* called to send either a FINACK, WAIT, or GO packet */
@@ -92,7 +173,7 @@ void handleTimeout()
 
 void closeConnection()
 {
-    /* finish writig file */
+    /* finish writing file */
     
     /* destroy connection */
     free(currentConnection);
@@ -100,9 +181,49 @@ void closeConnection()
 }
 
 
-void processDataPacket()
+/* return 1 if this filled the buffer */
+int processDataPacket(packet * sentPacket)
 {
+    /* does what happen in processing the data packet dictate what happens with timer? */
+    int startOfWindow = window_buffer[0].seq_num;    
+    int windowIndex;
+    int bufferFilled = 0;
 
+    /* check if packet is in window */
+    if (sentPacket->header.seq_num < startOfWindow ||
+	sentPacket->header.seq_num > (startOfWindow + WINDOW_SIZE) )
+    {
+	/* discard */
+	printf("received datapacket outside window \n");
+    }
+
+    /*  packet is in window */
+    else
+    {
+	/* load packet */
+	windowIndex = sentPacket->header.seq_num - startOfWindow;
+	/* just double check the seq_num lines up with expected */
+	if (window_buffer[windowIndex].seq_num != sentPacket->header.seq_num)
+	{
+	    printf("ERROR: data packet not being loaded correctly in window\n");
+	}
+
+	/* copy and mark as received */
+	memcpy(&window_buffer[windowIndex], sentPacket, sizeof(packet));
+	window_buffer[windowIndex].received = 1;
+
+	/* ack nak */
+	if (windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0)
+	{
+	    sendAckNak();
+	    /* write data */
+	    /* slide window */
+
+	}
+
+    }
+
+    return bufferFilled;
 }
 
 
@@ -118,6 +239,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
     packet * wait_packet;
     packet_type * type;
     int timer = 10; /* 10 usec default */
+    int bufferFull = 0;
     
     /* check if FIN */
     if(sentPacket->header.type == FIN)
@@ -154,7 +276,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
 	}
 	else if (sentPacket->header.type == DATA)
 	{
-	    processDataPacket();
+	    bufferFull = processDataPacket(sentPacket);
 	    /* maybe set timer here */
 	    timer = recv_data_timer;
 	}

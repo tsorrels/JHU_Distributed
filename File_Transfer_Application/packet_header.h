@@ -6,6 +6,7 @@
 
 
 #define RECV_NUM_RETRY_ACK 5
+#define NUM_INTERMITENT_ACK 4
 
 
 typedef enum {
@@ -14,7 +15,8 @@ typedef enum {
     GO,
     FIN,
     FINACK,
-    DATA
+    DATA,
+    ACK
 } packet_type;
 
 
@@ -49,7 +51,7 @@ typedef struct packet_buffer_type{
 typedef struct ack_payload_type{
     int ack;
     int num_nak;
-    int * num_nacks;
+    int * naks;
 } ack_payload;
 
 
