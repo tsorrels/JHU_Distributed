@@ -50,7 +50,7 @@ packet * buildAckNak()
     int numNak = 0;
     ack_payload * payload;
     int nakArray [WINDOW_SIZE];
-
+    packet * ackPacket;
     int consecutiveSeqNum = -1;
     int highestSeqNum = -1;
 
@@ -100,9 +100,9 @@ packet * buildAckNak()
 	}
     }
 
-    packet * ackPacket = malloc(sizeof(packet));
+    ackPacket = malloc(sizeof(packet));
     ackPacket->header.type = ACK;
-    payload = ackPacket->data;
+    payload = (ack_payload *) ackPacket->data;
     payload->ack = highestSeqNum;
     payload->num_nak = numNak;    
 
@@ -218,9 +218,7 @@ int processDataPacket(packet * sentPacket)
 	    sendAckNak();
 	    /* write data */
 	    /* slide window */
-
 	}
-
     }
 
     return bufferFilled;
@@ -229,15 +227,15 @@ int processDataPacket(packet * sentPacket)
 
 int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_in sendSockAddr)
 {
-    struct timeval        timeout;
+    //struct timeval        timeout;
 
-    fd_set                mask;
-    fd_set                dummy_mask,temp_mask;
+    //fd_set                mask;
+    //fd_set                dummy_mask,temp_mask;
 
     packet * sentPacket = (packet *)mess_buf;
-    int sendingSocketTemp;
-    packet * wait_packet;
-    packet_type * type;
+    //int sendingSocketTemp;
+    //packet * wait_packet;
+    //packet_type * type;
     int timer = 10; /* 10 usec default */
     int bufferFull = 0;
     
@@ -293,7 +291,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
 	printf("ERROR: reached a catch block indicating sender did not have a rule to process a packet received in this state\n");
     }
 
-    return;
+    return timer;
 }
 
 
@@ -302,14 +300,14 @@ int main (int argc, char** argv)
     /* socket declarations */
 
     struct sockaddr_in    name;    
-    struct sockaddr_in    send_addr;
+    //struct sockaddr_in    send_addr;
     struct sockaddr_in    from_addr;
     socklen_t             from_len;
-    struct hostent        h_ent;
-    struct hostent        *p_h_ent;
-    char                  host_name[NAME_LENGTH] = {'\0'};
-    char                  my_name[NAME_LENGTH] = {'\0'};
-    int                   host_num;
+    //struct hostent        h_ent;
+    //struct hostent        *p_h_ent;
+    //char                  host_name[NAME_LENGTH] = {'\0'};
+    //char                  my_name[NAME_LENGTH] = {'\0'};
+    //int                   host_num;
     int                   from_ip;
     int                   ss,sr;
     fd_set                mask;
@@ -317,13 +315,18 @@ int main (int argc, char** argv)
     int                   numBytes;
     int                   num;
     char                  mess_buf[MAX_MESS_LEN];
-    char                  input_buf[80];
+    //char                  input_buf[80];
     struct timeval        timeout;
 
     
     int lossRate = atoi(argv[1]);
-    int fileIterator = 1;
+    int fileIterator;
     int currentFD;
+
+    printf("Loss rate set to %d\n", lossRate);
+
+
+    fileIterator = 1;
 
     initializeWindowBuffer();
 
