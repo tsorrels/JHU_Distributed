@@ -18,7 +18,9 @@ receiver_state_type state;
 connection * currentConnection;
 packet_buffer * window_buffer;
 int retryCounter = 0;
-
+FILE * currentFileHandle;
+char * fileName = "file00";
+int fileCounter = 0;
 
 void closeConnection();
 void initializeWindowBuffer();
@@ -53,16 +55,16 @@ packet * buildAckNak()
     packet * ackPacket;
     int consecutiveSeqNum = -1;
     int highestSeqNum = -1;
+    int highestRecIndex = -1;
 
-    /* traverse, find highest seq_num */
+    /* traverse, find highest seq_num and corrosponding index*/
     for (i = 0 ; i < WINDOW_SIZE ; i ++)
     {
 	if (window_buffer[i].received == 1 &&
-	   (window_buffer[i].seq_num > highestSeqNum) )
-	{
+	   (window_buffer[i].seq_num > highestSeqNum) ){
+	    highestRecIndex = i;
 	    highestSeqNum = window_buffer[i].seq_num;
-	}
-	
+	}	
     }
 
     /* check for anamoly */
@@ -70,30 +72,9 @@ packet * buildAckNak()
     {
 	printf("ERROR: buildAckNak did not find packet in winwdow\n");
     }
-
-    
-    /* traverse, find highest CONSECUTIVE seq_num */
-    if (window_buffer[0].received == 1)
-    {
-	for (i = 0 ; i < highestSeqNum ; i ++)
-	{
-	    if (window_buffer[i].received == 1 ){
-		consecutiveSeqNum = window_buffer[i].seq_num;
-	    }
-	    else{
-		/* break loop */
-		break;
-	    }
-	}
-    }
-    else{
-	/* never got first seq_num in window */
-	
-    }
-
-
+     
     /* traverse, determine naks */
-    for (i = 0 ; i < highestSeqNum ; i ++){
+    for (i = 0 ; i < highestRecIndex ; i ++){
 	if (window_buffer[i].received == 0){
 	    nakArray[numNak] = window_buffer[i].seq_num;
 	    numNak ++;
@@ -111,11 +92,66 @@ packet * buildAckNak()
     return ackPacket;
 }
 
+
+void clearWindow()
+{
+    int i;
+    int consecutiveSeqNum = -1;
+    int consecutiveIndex = -1;
+    int highestSeqNum = -1;
+
+    /* traverse, find highest seq_num */
+    for (i = 0 ; i < WINDOW_SIZE ; i ++){
+	if (window_buffer[i].received == 1 &&
+	   (window_buffer[i].seq_num > highestSeqNum) ){
+	    highestSeqNum = window_buffer[i].seq_num;
+	}	
+    }
+
+    /* traverse, find highest CONSECUTIVE seq_num */
+    if (window_buffer[0].received == 1)
+    {
+	for (i = 0 ; i < highestSeqNum ; i ++)
+	{
+	    if (window_buffer[i].received == 1 ){
+		consecutiveSeqNum = window_buffer[i].seq_num;
+
+		/* track index of highest consecutive packet */
+		consecutiveIndex = i;
+
+		/* write the packet to the file */
+		fwrite(window_buffer[i].packet_bytes.data, sizeof(char), 
+		       PAYLOAD_SIZE, currentFileHandle);
+
+		/* mark packet window as empty */
+		window_buffer[i].received = 0;
+	    }
+	    else{
+		/* break loop */
+		break;
+	    }
+	}
+    }
+    
+    /* else never got first seq_num in window */
+	
+
+    /* slide window */
+    for (i = 0 ; i < WINDOW_SIZE ; i ++)
+    {
+	window_buffer[i].seq_num += consecutiveIndex;
+	window_buffer[i].seq_num += 1;
+    } 
+}
+
+
 void sendAckNak()
 {
     packet * ackPacket = buildAckNak();
 
     /* send packet */
+    
+    /******************** DO THIS NEXT **********************/
 
     free(ackPacket);
 
@@ -139,6 +175,7 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 	
     /* close temporary socket */
     close(sendingSocketTemp);
+    free(response_packet);
 }
 
 
@@ -170,13 +207,51 @@ void handleTimeout()
     }
 }
 
+void createNewConnection(struct sockaddr_in sendSockAddr)
+{
+    fileCounter ++;
+
+    if (fileCounter > 99)
+    {
+	printf("ERROR: cannot write to more than 99 files; require restart\n");
+    }
+
+    /* check whether a connection exists */
+    if (currentConnection != NULL){
+	printf("ERROR: trying to create a new connection but one exists\n");
+    }
+
+    /* store connection data */
+    (currentConnection) = malloc(sizeof(connection));
+    (currentConnection)->socket_address = sendSockAddr;
+    (currentConnection)->status = 1;
+
+    /* create new string! */
+    if(fileCounter % 10 == 0){
+	fileName[5] = fileName[5] + 1;
+	fileName[4] = '0';
+    }
+
+    else{
+	fileName[5] = fileName[5] + 1;
+    }
+
+    /* check whether a file is already open */
+    if (currentFileHandle != NULL)
+    {
+	printf("ERROR: trying to open file, but another file is open\n");
+    }
+    currentFileHandle = fopen(fileName, "w");   
+}
 
 void closeConnection()
 {
     /* finish writing file */
-    
+    clearWindow();
+
     /* destroy connection */
     free(currentConnection);
+    fclose(currentFileHandle);
     state = IDLE;
 }
 
@@ -216,11 +291,9 @@ int processDataPacket(packet * sentPacket)
 	if (windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0)
 	{
 	    sendAckNak();
-	    /* write data */
-	    /* slide window */
+	    clearWindow(); /* this writes data and slides window */
 	}
     }
-
     return bufferFilled;
 }
 
@@ -252,10 +325,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
     /* check if SYN and there is no active connection */
     else if(state == IDLE && sentPacket->header.type == SYN)
     {
-	/* store connection data */
-	(currentConnection) = malloc(sizeof(connection));
-	(currentConnection)->socket_address = sendSockAddr;
-	(currentConnection)->status = 1;
+	createNewConnection(sendSockAddr);
 
 	/* send GO and wait for response */
 	sendResponsePacket(GO, sendSockAddr); 
@@ -329,6 +399,7 @@ int main (int argc, char** argv)
     fileIterator = 1;
 
     initializeWindowBuffer();
+    currentFileHandle = NULL;
 
     state = IDLE;
 

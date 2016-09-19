@@ -44,7 +44,7 @@ typedef struct packet_type{
 typedef struct packet_buffer_type{
     int received;
     int seq_num;
-    void * packet;
+    packet packet_bytes;
 } packet_buffer;
 
 
