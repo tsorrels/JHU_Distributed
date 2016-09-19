@@ -3,7 +3,8 @@ CC=gcc
 CFLAGS = -g -c -Wall -pedantic
 #CFLAGS = -ansi -c -Wall -pedantic
 
-all: rcv ncp file_copy
+all: sendto_dbg.o rcv ncp file_copy  
+		
 
 rcv: rcv.o
 	    $(CC) -o rcv rcv.o  

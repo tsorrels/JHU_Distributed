@@ -2,8 +2,8 @@
 #include "net_include.h"
 
 #define WINDOW_SIZE 100
-#define PAYLOAD_SIZE 1390
-
+/* #define PAYLOAD_SIZE 1390 */
+#define PAYLOAD_SIZE (1400-sizeof(packet_header))
 
 #define RECV_NUM_RETRY_ACK 5
 #define NUM_INTERMITENT_ACK 4
