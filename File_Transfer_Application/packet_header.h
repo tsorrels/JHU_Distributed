@@ -1,7 +1,7 @@
 
 #include "net_include.h"
 
-#define WINDOW_SIZE 10
+#define WINDOW_SIZE 100
 #define PAYLOAD_SIZE 1390
 
 
@@ -60,6 +60,8 @@ typedef struct connection_type{
     int status; /* syn sent, sending data, finish, whatever */
 
 } connection;
+
+
 
 
 /* receiver timer values in microseconds*/
