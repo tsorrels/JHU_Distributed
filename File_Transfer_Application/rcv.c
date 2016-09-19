@@ -149,11 +149,18 @@ void clearWindow()
 void sendAckNak()
 {
     int sizePacket;
+    int sizePayload;
+    ack_payload * payloadPointer;
     packet * ackPacket = buildAckNak();
 
+    /* determine size of payload */
+    payloadPointer = ackPacket->data;
+    sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int);
     
+    sizePacket = sizePayload + sizeof(packet_header);
+
     /* send packet */
-    sendto( connectionSocketFD, ackPacket, 1, 0, 
+    sendto( connectionSocketFD, ackPacket, sizePacket, 0, 
 	    (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
