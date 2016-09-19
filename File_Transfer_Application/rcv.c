@@ -28,7 +28,6 @@ void closeConnection();
 void initializeWindowBuffer();
 void sendResponsePacket();
 void handleTimeout();
-int processDataPacket();
 void sendAckNak();
 
 
@@ -165,7 +164,6 @@ void sendAckNak()
 	    sizeof(currentConnection->socket_address) );
 
     free(ackPacket);
-
 }
 
 /* called to send either a FINACK, WAIT, or GO packet */
@@ -274,7 +272,7 @@ void closeConnection()
 
 
 /* return 1 if this filled the buffer */
-int processDataPacket(packet * sentPacket)
+int processDataPacket(packet * sentPacket, int numBytes)
 {
     /* does what happen in processing the data packet dictate what happens with timer? */
     int startOfWindow = window_buffer[0].seq_num;    
@@ -292,6 +290,11 @@ int processDataPacket(packet * sentPacket)
     /*  packet is in window */
     else
     {
+	/* update state if needed */
+	if (state != RECV_DATA){
+	    state = RECV_DATA;
+	}
+
 	/* load packet */
 	windowIndex = sentPacket->header.seq_num - startOfWindow;
 	/* just double check the seq_num lines up with expected */
@@ -301,7 +304,7 @@ int processDataPacket(packet * sentPacket)
 	}
 
 	/* copy and mark as received */
-	memcpy(&window_buffer[windowIndex], sentPacket, sizeof(packet));
+	memcpy(&window_buffer[windowIndex], sentPacket, numBytes);
 	window_buffer[windowIndex].received = 1;
 
 	/* ack nak */
@@ -315,7 +318,7 @@ int processDataPacket(packet * sentPacket)
 }
 
 
-int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_in sendSockAddr)
+int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr)
 {
     //struct timeval        timeout;
 
@@ -332,9 +335,14 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
     /* check if FIN */
     if(sentPacket->header.type == FIN)
     {
-	if (state == RECV_DATA || state == WAITING_DATA)
-	{
-	    closeConnection();
+	/* check state and if there is a connection */
+	if ( (state == RECV_DATA || state == WAITING_DATA) &&
+	     currentConnection != NULL) {
+	    /* check if the FIN is coming from current connection */
+	    if (currentConnection->socket_address.sin_addr.s_addr == 
+		sendSockAddr.sin_addr.s_addr ) {
+		closeConnection();
+	    }  
 	}
 	sendResponsePacket(FINACK, sendSockAddr); 
     }
@@ -345,6 +353,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
 	createNewConnection(sendSockAddr);
 
 	/* send GO and wait for response */
+	//TODO: two sockets
 	sendResponsePacket(GO, sendSockAddr); 
 	state = WAITING_DATA;
 	timer = recv_go_timer;
@@ -361,7 +370,7 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
 	}
 	else if (sentPacket->header.type == DATA)
 	{
-	    bufferFull = processDataPacket(sentPacket);
+	    bufferFull = processDataPacket(sentPacket, numBytes);
 	    /* maybe set timer here */
 	    timer = recv_data_timer;
 	}
@@ -452,18 +461,18 @@ int main (int argc, char** argv)
     send_addr.sin_family = AF_INET;
     send_addr.sin_addr.s_addr = host_num; 
     send_addr.sin_port = htons(PORT);
+    */
     
     FD_ZERO( &mask );
     FD_ZERO( &dummy_mask );
     FD_SET( sr, &mask );
-    */
+    
 
     /* event loop */   
     timeout.tv_sec = 0; /* timeout will never be more than a second */
     timeout.tv_usec = 10; /* initial timeout value */
     for(;;)
     {
-
         temp_mask = mask;
         num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
         if (num > 0) /* there is a FD that has data to read */
@@ -479,7 +488,7 @@ int main (int argc, char** argv)
                 from_ip = from_addr.sin_addr.s_addr;
 
 		/* process packet, return new timeout value */	
-		timeout.tv_usec = processPacket(mess_buf, numBytes, currentFD, from_addr);
+		timeout.tv_usec = processPacket(mess_buf, numBytes, from_addr);
 
 /*
                 printf( "Received from (%d.%d.%d.%d): %s\n", 
