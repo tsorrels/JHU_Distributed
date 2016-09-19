@@ -311,7 +311,7 @@ int processDataPacket(packet * sentPacket)
 	    clearWindow(); /* this writes data and slides window */
 	}
     }
-    return bufferFilled;
+    return bufferFilled; /* this will determine which timeout value to use */
 }
 
 
@@ -367,6 +367,12 @@ int processPacket(char * mess_buf, int numBytes, int currentFD, struct sockaddr_
 	}
     }
 
+    /* if this is not active connection, and packet is data type */
+    else if(sentPacket->header.type == DATA)
+    {
+	sendResponsePacket(FINACK, sendSockAddr); 
+    }
+
     /* send wait */
     else if (state != IDLE && sentPacket->header.type == SYN)
     {
@@ -412,16 +418,13 @@ int main (int argc, char** argv)
 
     printf("Loss rate set to %d\n", lossRate);
 
-
+    /* initialize */
     fileIterator = 1;
     fileCounter = 0;
     connectionSocketFD = -1;
     retryCounter = 0;
-
-
     initializeWindowBuffer();
     currentFileHandle = NULL;
-
     state = IDLE;
 
     return 0;
@@ -433,9 +436,9 @@ int main (int argc, char** argv)
 	exit(1);
     }
 
-    name.sin_family = AF_INET; 
-    name.sin_addr.s_addr = INADDR_ANY; 
-    name.sin_port = htons(PORT);
+    //name.sin_family = AF_INET; 
+    //name.sin_addr.s_addr = INADDR_ANY; 
+    //name.sin_port = htons(PORT);
 
 
     if ( bind( sr, (struct sockaddr *)&name, sizeof(name) ) < 0 ) {
@@ -506,11 +509,12 @@ int main (int argc, char** argv)
 
 
     /* set up sending socket */ 
-    ss = socket(AF_INET, SOCK_DGRAM, 0); /* socket for sending (udp) */
+/*
+    ss = socket(AF_INET, SOCK_DGRAM, 0);
     if (ss<0) {
 	perror("Ucast: socket");
 	exit(1);
     }
-    
+  */  
     return 0;
 }
