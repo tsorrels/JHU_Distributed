@@ -6,11 +6,11 @@ CFLAGS = -g -c -Wall -pedantic
 all: sendto_dbg.o rcv ncp file_copy  
 		
 
-rcv: rcv.o
-	    $(CC) -o rcv rcv.o  
+rcv: rcv.o sendto_dbg.o
+	    $(CC) -o rcv rcv.o sendto_dbg.o
 
-ncp: ncp.o
-	    $(CC) -o ncp ncp.o
+ncp: ncp.o sendto_dbg.o
+	    $(CC) -o ncp ncp.o sendto_dbg.o
 
 file_copy: file_copy.o
 	    $(CC) -o file_copy file_copy.o
