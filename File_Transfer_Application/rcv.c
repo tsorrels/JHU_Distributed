@@ -17,10 +17,12 @@
 receiver_state_type state;
 connection * currentConnection;
 packet_buffer * window_buffer;
-int retryCounter = 0;
 FILE * currentFileHandle;
 char * fileName = "file00";
-int fileCounter = 0;
+int fileCounter;
+int connectionSocketFD;
+int retryCounter;
+
 
 void closeConnection();
 void initializeWindowBuffer();
@@ -28,7 +30,6 @@ void sendResponsePacket();
 void handleTimeout();
 int processDataPacket();
 void sendAckNak();
-
 
 
 
@@ -147,11 +148,14 @@ void clearWindow()
 
 void sendAckNak()
 {
+    int sizePacket;
     packet * ackPacket = buildAckNak();
 
-    /* send packet */
     
-    /******************** DO THIS NEXT **********************/
+    /* send packet */
+    sendto( connectionSocketFD, ackPacket, 1, 0, 
+	    (struct sockaddr *)&(currentConnection->socket_address), 
+	    sizeof(currentConnection->socket_address) );
 
     free(ackPacket);
 
@@ -211,8 +215,7 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 {
     fileCounter ++;
 
-    if (fileCounter > 99)
-    {
+    if (fileCounter > 99){
 	printf("ERROR: cannot write to more than 99 files; require restart\n");
     }
 
@@ -225,6 +228,12 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
     (currentConnection) = malloc(sizeof(connection));
     (currentConnection)->socket_address = sendSockAddr;
     (currentConnection)->status = 1;
+
+    /* create sender socket */
+    connectionSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
+    if (connectionSocketFD<0) {
+	perror("ERROR: failed to create socket in new connection\n");
+    }   
 
     /* create new string! */
     if(fileCounter % 10 == 0){
@@ -252,6 +261,7 @@ void closeConnection()
     /* destroy connection */
     free(currentConnection);
     fclose(currentFileHandle);
+    close(connectionSocketFD);
     state = IDLE;
 }
 
@@ -397,6 +407,10 @@ int main (int argc, char** argv)
 
 
     fileIterator = 1;
+    fileCounter = 0;
+    connectionSocketFD = -1;
+    retryCounter = 0;
+
 
     initializeWindowBuffer();
     currentFileHandle = NULL;
@@ -475,7 +489,7 @@ int main (int argc, char** argv)
                 printf( "There is an input: %s\n", input_buf );
                 sendto( ss, input_buf, strlen(input_buf), 0, 
                     (struct sockaddr *)&send_addr, sizeof(send_addr) );
-		    }*/
+ 		    }*/
         } 
 	else 
 	{ /* timer fired */
