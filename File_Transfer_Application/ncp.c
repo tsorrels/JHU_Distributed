@@ -32,7 +32,7 @@ int main(int argc, char** argv)
     char                  my_name[NAME_LENGTH] = {'\0'};
     char                  *s_filename,*host_name;
     char                  *d_filename;
-    int                   lossRate,i,j,read,resend=0,ack;
+    int                   lossRate,i,j,k,h,read,resend=0,ack;
     //fd_set                mask;
     fd_set                temp_mask;
     int                   num,last_seq=0,start_seq=0,hasnacks=0;
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     FD_SET( sr, &mask );
     //FD_SET( (long)0, &mask ); /* stdin */
     sendto_dbg_init(lossRate);
-    FILE *f = fopen(s_filename,'r');
+    FILE *f = fopen(s_filename,"r");
     buffer = (char **)malloc(sizeof(char *)*WINDOW_SIZE);
     buffer[0] = (char *)malloc(sizeof(char)*WINDOW_SIZE*PAYLOAD_SIZE);
     for(i=0;i<WINDOW_SIZE;i++){
@@ -118,11 +118,11 @@ int main(int argc, char** argv)
         }
         if(j>0){
             for(i=0;i<j;i++){
-                for(int h=0;h<size[(start_seq+i)%WINDOW_SIZE];h++)
+                for(h=0;h<size[(start_seq+i)%WINDOW_SIZE];h++)
                     packets[(start_seq+i)%WINDOW_SIZE]->data[h] = buffer[(start_seq+i)%WINDOW_SIZE][h];
                 packets[(start_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
                 packets[(start_seq+i)%WINDOW_SIZE]->header.type=DATA;
-                sendto_dbg( ss, packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet), 0, 
+                sendto_dbg( ss, (char *)packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             }
             
@@ -136,12 +136,12 @@ int main(int argc, char** argv)
         }
         else if((read<=0)&&(hasnacks==0)){
             packets[0]->header.type=FIN;
-            sendto_dbg( ss, packets[0], sizeof(packet), 0, 
+            sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
         }
         if(hasnacks==1){
-            for(int k=0;k<payload->num_nak;k++){
-                sendto_dbg( ss, packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet), 0, 
+            for(k=0;k<payload->num_nak;k++){
+                sendto_dbg( ss, (char *)packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             }
         }
@@ -177,9 +177,9 @@ int main(int argc, char** argv)
 void establish_conn(void){
     //TODO
     while(1){
-        packet *start;
+        packet *start=malloc(sizeof(packet));
         start->header.type=SYN;
-        sendto_dbg( ss, start, sizeof(packet), 0, 
+        sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
         packet * rec = check();
         if(rec == NULL)
@@ -198,7 +198,6 @@ packet * check(void){
     struct sockaddr_in    from_addr;
     socklen_t             from_len;
     int                   from_ip;
-    int bytes;
     packet *mess;
     char mess_buf[MAX_MESS_LEN];
     fd_set temp_mask;
@@ -211,7 +210,7 @@ packet * check(void){
         if (num > 0) {
                 if ( FD_ISSET( sr, &temp_mask) ) {
                     from_len = sizeof(from_addr);
-                    bytes = recvfrom( sr, mess_buf, sizeof(mess_buf), 0,  
+                    recvfrom( sr, mess_buf, sizeof(mess_buf), 0,  
                               (struct sockaddr *)&from_addr, 
                               &from_len );
                     //mess_buf[bytes] = 0;
