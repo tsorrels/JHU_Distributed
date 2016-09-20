@@ -232,6 +232,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                 free(packets[i]);
             }
             free(buffer);
+            close(sr);
             if(sent_fin==1){
                 break;
             }
