@@ -495,8 +495,6 @@ int main (int argc, char** argv)
     state = IDLE;
     debug = 1;
 
-    return 0;
-
     /* set up receive socket */
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
@@ -504,9 +502,9 @@ int main (int argc, char** argv)
 	exit(1);
     }
 
-    //name.sin_family = AF_INET; 
-    //name.sin_addr.s_addr = INADDR_ANY; 
-    //name.sin_port = htons(PORT);
+    name.sin_family = AF_INET; 
+    name.sin_addr.s_addr = INADDR_ANY; 
+    name.sin_port = htons(PORT);
 
 
     if ( bind( sr, (struct sockaddr *)&name, sizeof(name) ) < 0 ) {
@@ -528,7 +526,7 @@ int main (int argc, char** argv)
     
 
     /* event loop */   
-    timeout.tv_sec = 0; /* timeout will never be more than a second */
+    timeout.tv_sec = 1; /* timeout will never be more than a second */
     timeout.tv_usec = 10; /* initial timeout value */
 
     printf("Initialized: ready to receive\n");
