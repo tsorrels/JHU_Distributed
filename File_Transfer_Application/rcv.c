@@ -101,7 +101,8 @@ void clearWindow()
     int consecutiveIndex = -1;
     int highestIndex = -1;
     int highestSeqNum = -1;
-
+    int numBytesWritten;
+    
     if (debug == 1)
 	printf("Clearing window:\n");
 
@@ -128,10 +129,21 @@ void clearWindow()
 		/* track index of highest consecutive packet */
 		consecutiveIndex = i;
 
+		if (debug == 1)
+		    printf("Writing packet with seq_num %d\n",
+			   consecutiveSeqNum);
+		
 		/* write the packet to the file */
-		fwrite(window_buffer[i].packet_bytes.data, sizeof(char), 
-		       PAYLOAD_SIZE, currentFileHandle);
+		numBytesWritten = fwrite(window_buffer[i].packet_bytes.data,
+					 sizeof(char),
+					 window_buffer[i].length,
+					 currentFileHandle);
 
+		if (debug == 1)
+		  printf("Wrote %d bytes\n", numBytesWritten);
+
+
+		
 		/* mark packet window as empty */
 		window_buffer[i].received = 0;
 	    }
@@ -270,9 +282,10 @@ void handleTimeout()
     }
 }
 
-void createNewConnection(struct sockaddr_in sendSockAddr)
+void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
 {
     struct sockaddr_in toAddress;
+    char * fileName;
 
     fileCounter ++;
 
@@ -280,9 +293,19 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 	printf("creating new connection with %d\n",
 	    sendSockAddr.sin_addr.s_addr);
 
+	
+    fileName = sentPacket->data;
+
+
+    /* this had better have shown up with a null terminator */
+    if (debug ==1 )
+        printf("Preparing to receive %s\n",
+	    fileName);
+
+    /*
     if (fileCounter > 99){
 	perror("ERROR: cannot write to more than 99 files; require restart\n");
-    }
+	} */
 
     /* check whether a connection exists */
     if (currentConnection != NULL){
@@ -293,8 +316,7 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
     toAddress.sin_addr.s_addr = sendSockAddr.sin_addr.s_addr;
     toAddress.sin_port = htons(PORT);
 
-    
-    
+        
     /* store connection data */
     (currentConnection) = malloc(sizeof(connection));
     (currentConnection)->socket_address = toAddress;
@@ -312,10 +334,10 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
     {
 	perror("ERROR: trying to open file, but another file is open\n");
     }
-    currentFileHandle = fopen("testFileName", "w");
+    currentFileHandle = fopen(fileName, "w");
     if (currentFileHandle == NULL){
-	perror("ERROR: could not open file for writing\n");
-
+        perror("ERROR: could not open file for writing:");
+	perror(fileName);
     }
 }
 
@@ -348,7 +370,8 @@ int processDataPacket(packet * sentPacket, int numBytes)
     startOfWindow = window_buffer[0].seq_num;    
 
     if (debug == 1)
-      printf("Window starts at seq_num = %d\n", startOfWindow);
+      printf("Window starts at seq_num = %d, size = %d\n",
+	     startOfWindow, numBytes);
       
 
     
@@ -385,7 +408,7 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	memcpy(&(window_buffer[windowIndex].packet_bytes),
 	       sentPacket, numBytes);
 	window_buffer[windowIndex].received = 1;
-	window_buffer[windowIndex].length = numBytes;
+	window_buffer[windowIndex].length = numBytes - sizeof(packet_header);
 
 
 	/* ack nak */
@@ -440,7 +463,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     /* check if SYN and there is no active connection */
     else if(state == IDLE && sentPacket->header.type == SYN)
     {
-	createNewConnection(sendSockAddr);
+        createNewConnection(sentPacket, sendSockAddr);
 
 	/* send GO and wait for response */
 	//TODO: two sockets
