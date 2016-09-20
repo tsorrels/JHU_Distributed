@@ -16,7 +16,7 @@
 int gethostname(char*,size_t);
 
 void sender(int,char *,char *,char *); 
-packet * check(void);
+packet * check(uint);
 void establish_conn(char *);
 fd_set mask,dummy_mask;
 int host_num;
@@ -48,6 +48,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     packet                *packets[WINDOW_SIZE];
     packet                *rec;
     ack_payload           *payload;
+    uint                  timer=sender_data_timer;
     
     
     gethostname(my_name, NAME_LENGTH);
@@ -120,12 +121,14 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                 sendto_dbg( ss, (char *)packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             }
+            timer = sender_data_timer;
         }
         else if((read<=0)&&(hasnacks==0)&&(ack==(last_seq-1))){
             packets[0]->header.type=FIN;
             sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             sent_fin =1;
+            timer = sender_fin_timeout;
         }
         if((hasnacks==1)||(ack<(last_seq-1))){
             if(hasnacks==1){
@@ -140,8 +143,9 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
                 }
             }
+            timer = sender_data_timer;
         }
-        packet * rec = check();
+        packet * rec = check(timer);
         if(rec == NULL){
             resend = 1;
             continue;
@@ -182,19 +186,19 @@ void establish_conn(char *filename){
         strcpy(start->data, filename);
         sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
-        packet * rec = check();
+        packet * rec = check(sender_syn_timer);
         if(rec == NULL)
             continue;
         else if(rec->header.type == WAIT){
             //TODO
-            sleep(10);
+            sleep(sender_wait_timer);
         }
         else if(rec->header.type == GO)
             return;
     }    
 }
 
-packet * check(void){
+packet * check(uint timer){
     struct timeval timeout;
     struct sockaddr_in    from_addr;
     socklen_t             from_len;
@@ -206,7 +210,7 @@ packet * check(void){
         temp_mask = mask;
         timeout.tv_sec = 0;
         //TODO
-        timeout.tv_usec = sender_fin_timeout;
+        timeout.tv_usec = timer;
         int num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
         if (num > 0) {
                 if ( FD_ISSET( sr, &temp_mask) ) {
