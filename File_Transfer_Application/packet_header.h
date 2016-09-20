@@ -6,7 +6,7 @@
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 
 #define RECV_NUM_RETRY_ACK 5
-#define NUM_INTERMITENT_ACK 4
+#define NUM_INTERMITENT_ACK 1
 
 
 typedef enum {

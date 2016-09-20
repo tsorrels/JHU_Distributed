@@ -199,7 +199,13 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 
     packet_header * response_packet;
     int sendingSocketTemp;;
-
+    int fromIP;
+    struct sockaddr_in toAddress;
+    
+    if (debug == 1){
+      printf("sending response packet\n");
+    }
+    
     response_packet = NULL;
     sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -215,10 +221,14 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
     }
     response_packet = malloc(sizeof(packet_header));
     response_packet->type = type;
- 
+
+    toAddress.sin_family = AF_INET;
+    toAddress.sin_addr.s_addr = sendSockAddr.sin_addr.s_addr;
+    toAddress.sin_port = htons(PORT);
+    
     /* send wait, address to whoever sent original packet */
     sendto(sendingSocketTemp, response_packet, sizeof(packet_header), 0, 
-	   (struct sockaddr *)&sendSockAddr, sizeof(sendSockAddr));
+	   (struct sockaddr *)&toAddress, sizeof(toAddress));
 	
     /* close temporary socket */
     close(sendingSocketTemp);
@@ -286,22 +296,17 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 	perror("ERROR: failed to create socket in new connection\n");
     }   
 
-    /* create new string! */
-    if(fileCounter % 10 == 0){
-	fileName[5] = fileName[5] + 1;
-	fileName[4] = '0';
-    }
-
-    else{
-	fileName[5] = fileName[5] + 1;
-    }
 
     /* check whether a file is already open */
     if (currentFileHandle != NULL)
     {
 	perror("ERROR: trying to open file, but another file is open\n");
     }
-    currentFileHandle = fopen(fileName, "w");   
+    currentFileHandle = fopen("testFileName", "w");
+    if (currentFileHandle == NULL){
+	perror("ERROR: could not open file for writing\n");
+
+    }
 }
 
 void closeConnection()
