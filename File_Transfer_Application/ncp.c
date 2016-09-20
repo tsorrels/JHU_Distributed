@@ -55,10 +55,8 @@ int main(int argc, char ** argv)
     host_name = strtok(NULL,"@");
 
     if(debug ==1)
-        printf("LossRate = %d, source_filename = %s, destination_filename = %s, hostname = %s",lossRate, s_filename, d_filename,host_name);
-/*
+        printf("LossRate = %d, source_filename = %s, destination_filename = %s, hostname = %s\n",lossRate, s_filename, d_filename,host_name);
     sender(lossRate,s_filename,d_filename,host_name);
-*/
     return 0;
 }
 void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
@@ -94,7 +92,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     ack=WINDOW_SIZE-1;
 
 
-
+    if(debug==1)
+        printf("Entered sender\n");
     //gethostname(my_name, NAME_LENGTH);
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
@@ -137,12 +136,14 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     f = fopen(s_filename,"r");
     buffer = (char **)malloc(sizeof(char *)*WINDOW_SIZE);
     buffer[0] = (char *)malloc(sizeof(char)*WINDOW_SIZE*PAYLOAD_SIZE);
+    if(debug==1)
+        printf("Entered sender\n");
     for(i=0;i<WINDOW_SIZE;i++){
         buffer[i] = (*buffer + PAYLOAD_SIZE*i);
         packets[i] = malloc(sizeof(packet));
     }
     if(debug==1)
-        printf("Establishing connection");
+        printf("Establishing connection\n");
     establish_conn(d_filename);
     total=WINDOW_SIZE;
     while(1){
@@ -152,7 +153,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             else
                 total = ack+1;
             if(debug==1)
-                    printf("Reading %d packets",total);
+                    printf("Reading %d packets\n",total);
             for(j=0;j<total;j++){
                 read = fread(buffer[(start_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
                 size[(start_seq+j)%WINDOW_SIZE]=read;
@@ -162,7 +163,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         }
         if(j>0){
             if(debug==1)
-                    printf("Sending %d packets",j);
+                    printf("Sending %d packets\n",j);
             for(i=0;i<j;i++){
                 for(h=0;h<size[(start_seq+i)%WINDOW_SIZE];h++)
                     packets[(start_seq+i)%WINDOW_SIZE]->data[h] = buffer[(start_seq+i)%WINDOW_SIZE][h];
@@ -175,7 +176,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         }
         else if((read<=0)&&(hasnacks==0)&&(ack==(last_seq-1))){
             if(debug==1)
-                    printf("Sending FIN packet");
+                    printf("Sending FIN packet\n");
             packets[0]->header.type=FIN;
             sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -185,7 +186,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         if((hasnacks==1)||(ack<(last_seq-1))){
             if(hasnacks==1){
                 if(debug==1)
-                    printf("Resending NAKS");
+                    printf("Resending NAKS\n");
                 for(k=0;k<payload->num_nak;k++){
                     sendto_dbg( ss, (char *)packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet), 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -193,7 +194,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             }
             if(ack<(last_seq-1)){
                 if(debug==1)
-                    printf("Resending packets after ACK");
+                    printf("Resending packets after ACK\n");
                 for(k=ack+1;k<last_seq;k++){
                     sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet), 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -205,7 +206,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         if(rec == NULL){
             resend = 1;
             if(debug==1)
-                printf("Resending the last window");
+                printf("Resending the last window\n");
             continue;
         }
         if(rec->header.type == ACK){
@@ -220,11 +221,11 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             else
                 hasnacks = 0;
             if(debug==1)
-                printf("Received ACK/NACK packet with ACK = %d and num_nak = %d",ack,payload->num_nak);
+                printf("Received ACK/NACK packet with ACK = %d and num_nak = %d\n",ack,payload->num_nak);
         }
         else if(rec->header.type == FINACK){
             if(debug==1)
-                printf("Received FINACK, FIN status = %d",sent_fin);
+                printf("Received FINACK, FIN status = %d\n",sent_fin);
             if(sent_fin==1){
                 fclose(f);
                 for(i=0;i<WINDOW_SIZE;i++){
@@ -250,20 +251,20 @@ void establish_conn(char *filename){
         sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
         if(debug==1)
-            printf("Sent syn packet");
+            printf("Sent syn packet\n");
         rec = check(sender_syn_timer);
         if(rec == NULL){
             if(debug==1)
-                printf("Sender timed out.");
+                printf("Sender timed out.\n");
             continue;
         }
         else if(rec->header.type == WAIT){
-            printf("Receiver is busy, will retry after some time.");
+            printf("Receiver is busy, will retry after some time.\n");
             sleep(sender_wait_timer);
         }
         else if(rec->header.type == GO)
             if(debug == 1)
-                printf("Received Go!");
+                printf("Received Go!\n");
             return;
     }    
 }
@@ -291,7 +292,7 @@ packet * check(uint timer){
                               &from_len );
                     //mess_buf[bytes] = 0;
                     if(debug==1)
-                        printf("Received packet");
+                        printf("Received packet\n");
                     from_ip = from_addr.sin_addr.s_addr;
                     if(host_num == from_ip){
                         mess = (packet *)mess_buf;
