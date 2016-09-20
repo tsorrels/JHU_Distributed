@@ -7,17 +7,15 @@
  *
  * 
  */
-
 #include "packet_header.h"
 #include "sendto_dbg.h"
 #define NAME_LENGTH 80
-#define PAYLOAD_SIZE (1400-sizeof(packet_header))
 
-int gethostname(char*,size_t);
+//int gethostname(char*,size_t);
 
-void sender(int,char *,char *,char *); 
-packet * check(uint);
-void establish_conn(char *);
+void sender(int lossRate, char *s_filename, char *d_filename, char *host_name);
+void establish_conn(char *filename);
+packet * check(uint timer);
 fd_set mask,dummy_mask;
 int host_num;
 int ss,sr,debug=1;
@@ -28,6 +26,11 @@ int main(int argc, char** argv)
     char                  *s_filename,*host_name;
     char                  *d_filename;
     int                   lossRate;
+    if(debug==1)
+        printf("Starting sender");
+    s_filename = malloc(NAME_LENGTH);
+    d_filename = malloc(NAME_LENGTH);
+    host_name = malloc(NAME_LENGTH);
     lossRate = atoi(argv[1]);
     s_filename = argv[2];
     d_filename = strtok(argv[3],"@");
@@ -42,7 +45,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     struct sockaddr_in    name;
     struct hostent        h_ent;
     struct hostent        *p_h_ent;
-    char                  my_name[NAME_LENGTH] = {'\0'};
+    //char                  my_name[NAME_LENGTH] = {'\0'};
     int                   i,j,k,h,read,resend=0,ack=WINDOW_SIZE-1;
     int                   last_seq=0,start_seq=0,prev_seq=0,hasnacks=0,sent_fin=0;
     int                   size[WINDOW_SIZE];
@@ -53,7 +56,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     uint                  timer=sender_data_timer;
     
     
-    gethostname(my_name, NAME_LENGTH);
+    //gethostname(my_name, NAME_LENGTH);
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
         perror("Ucast: socket");
