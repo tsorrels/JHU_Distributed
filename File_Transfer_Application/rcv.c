@@ -105,7 +105,7 @@ void clearWindow()
 	if (window_buffer[i].received == 1 &&
 	   (window_buffer[i].seq_num > highestSeqNum) ){
 	    highestSeqNum = window_buffer[i].seq_num;
-	}	
+	}
     }
 
     /* traverse, find highest CONSECUTIVE seq_num */
@@ -306,6 +306,8 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	/* copy and mark as received */
 	memcpy(&window_buffer[windowIndex], sentPacket, numBytes);
 	window_buffer[windowIndex].received = 1;
+	window_buffer[windowIndex].length = numBytes;
+
 
 	/* ack nak */
 	if (windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0)

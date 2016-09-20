@@ -44,6 +44,7 @@ typedef struct packet_type{
 typedef struct packet_buffer_type{
     int received;
     int seq_num;
+    int length;
     packet packet_bytes;
 } packet_buffer;
 
@@ -68,10 +69,13 @@ typedef struct connection_type{
 const uint recv_ack_timer = 5000;
 const uint recv_go_timer = 5000;
 const uint recv_data_timer = 5000;
-
+const uint recv_ack_timer = 5000;
 
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 5000;
+const uint sender_syn_timer = 5000;
+const uint sender_wait_timer = 5000;
+const uint sender_data_timer = 20000;
 
 
 
