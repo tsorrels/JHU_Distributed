@@ -99,6 +99,7 @@ void clearWindow()
     int i;
     int consecutiveSeqNum = -1;
     int consecutiveIndex = -1;
+    int highestIndex = -1;
     int highestSeqNum = -1;
 
     if (debug == 1)
@@ -109,6 +110,7 @@ void clearWindow()
 	if (window_buffer[i].received == 1 &&
 	   (window_buffer[i].seq_num > highestSeqNum) ){
 	    highestSeqNum = window_buffer[i].seq_num;
+	    highestIndex = i;
 	}
     }
     if (debug == 1)
@@ -118,7 +120,7 @@ void clearWindow()
     /* traverse, find highest CONSECUTIVE seq_num */
     if (window_buffer[0].received == 1)
     {
-	for (i = 0 ; i < highestSeqNum ; i ++)
+	for (i = 0 ; i <= highestIndex ; i ++)
 	{
 	    if (window_buffer[i].received == 1 ){
 		consecutiveSeqNum = window_buffer[i].seq_num;
@@ -198,8 +200,7 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 {
 
     packet_header * response_packet;
-    int sendingSocketTemp;;
-    int fromIP;
+    int sendingSocketTemp;
     struct sockaddr_in toAddress;
     
     if (debug == 1){
@@ -257,6 +258,7 @@ void handleTimeout()
 
 	else
 	{
+	    sendAckNak();
 	    /* resend ack/nak */
 	    retryCounter ++;
 	}
@@ -270,6 +272,8 @@ void handleTimeout()
 
 void createNewConnection(struct sockaddr_in sendSockAddr)
 {
+    struct sockaddr_in toAddress;
+
     fileCounter ++;
 
     if (debug ==1 )
@@ -285,9 +289,15 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 	perror("ERROR: trying to create a new connection but one exists\n");
     }
 
+    toAddress.sin_family = AF_INET;
+    toAddress.sin_addr.s_addr = sendSockAddr.sin_addr.s_addr;
+    toAddress.sin_port = htons(PORT);
+
+    
+    
     /* store connection data */
     (currentConnection) = malloc(sizeof(connection));
-    (currentConnection)->socket_address = sendSockAddr;
+    (currentConnection)->socket_address = toAddress;
     (currentConnection)->status = 1;
 
     /* create sender socket */
@@ -330,13 +340,21 @@ void closeConnection()
 int processDataPacket(packet * sentPacket, int numBytes)
 {
     /* does what happen in processing the data packet dictate what happens with timer? */
-    int startOfWindow = window_buffer[0].seq_num;    
+    int startOfWindow;     
     int windowIndex;
     int bufferFilled = 0;
 
+
+    startOfWindow = window_buffer[0].seq_num;    
+
+    if (debug == 1)
+      printf("Window starts at seq_num = %d\n", startOfWindow);
+      
+
+    
     /* check if packet is in window */
-    if (sentPacket->header.seq_num < startOfWindow ||
-	sentPacket->header.seq_num > (startOfWindow + WINDOW_SIZE) )
+    if ( (sentPacket->header.seq_num < startOfWindow) ||
+	 (sentPacket->header.seq_num > (startOfWindow + WINDOW_SIZE)) )
     {
 	/* discard */
 	if (debug == 1)
@@ -359,14 +377,23 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	    perror("ERROR: data packet not being loaded correctly in window\n");
 	}
 
+	if (debug == 1)
+	    printf("Loading packet seq_num %d into buffer at index %d\n",
+		   sentPacket->header.seq_num, windowIndex);
+	
 	/* copy and mark as received */
-	memcpy(&window_buffer[windowIndex], sentPacket, numBytes);
+	memcpy(&(window_buffer[windowIndex].packet_bytes),
+	       sentPacket, numBytes);
 	window_buffer[windowIndex].received = 1;
 	window_buffer[windowIndex].length = numBytes;
 
 
 	/* ack nak */
-	if (windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0)
+	/*
+	if (( windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0) &&
+	windowIndex != 0 ) */
+
+	if ( windowIndex == WINDOW_SIZE - 1)
 	{
 	    sendAckNak();
 	    clearWindow(); /* this writes data and slides window */
