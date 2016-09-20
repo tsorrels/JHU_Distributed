@@ -25,7 +25,7 @@ struct sockaddr_in    send_addr;
 
 
 packet * check(uint timer);
-void sender(int lossRate, char * s_filename, char * d_filename, char * host_name);
+void sender(int lossRate, char * s_filename, char * d_filename);
 void establish_conn(char *filename);
 
 
@@ -36,6 +36,9 @@ int main(int argc, char ** argv)
     char * host_name;
     char * d_filename;
     int lossRate;
+    struct sockaddr_in    name;
+    struct hostent        *p_h_ent;
+    struct hostent        h_ent;
     debug = 1;
     if(debug==1)
         printf("Starting sender\n");
@@ -56,45 +59,7 @@ int main(int argc, char ** argv)
 
     if(debug ==1)
         printf("LossRate = %d, source_filename = %s, destination_filename = %s, hostname = %s\n",lossRate, s_filename, d_filename,host_name);
-    sender(lossRate,s_filename,d_filename,host_name);
-    return 0;
-}
-void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
-{
-    struct sockaddr_in    name;
-    struct hostent        h_ent;
-    struct hostent        *p_h_ent;
-    int                   i,j,k,h,read,resend,ack;
-    int                   last_seq;
-    int start_seq;
-    int prev_seq;
-    int hasnacks;
-    int sent_fin;
-    int                   size[WINDOW_SIZE];
-    char                  **buffer;
-    packet                *packets[WINDOW_SIZE];
-    packet                *rec;
-    ack_payload           *payload;
-    uint                  timer;
-    FILE *f;    
-    int total;
-
-
-    timer=sender_data_timer;    
-
-    last_seq=0;
-    start_seq=0;
-    prev_seq=0;
-    hasnacks=0;
-    sent_fin=0;
-
-    resend=0;
-    ack=WINDOW_SIZE-1;
-
-
-    if(debug==1)
-        printf("Entered sender\n");
-    //gethostname(my_name, NAME_LENGTH);
+    
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
         perror("Ucast: socket");
@@ -133,6 +98,43 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     FD_ZERO( &dummy_mask );
     FD_SET( sr, &mask );
     sendto_dbg_init(lossRate);
+    sender(lossRate,s_filename,d_filename);
+    return 0;
+}
+void sender(int lossRate, char *s_filename, char *d_filename)
+{
+    int                   i,j,k,h,read,resend,ack;
+    int                   last_seq;
+    int start_seq;
+    int prev_seq;
+    int hasnacks;
+    int sent_fin;
+    int                   size[WINDOW_SIZE];
+    char                  **buffer;
+    packet                *packets[WINDOW_SIZE];
+    packet                *rec;
+    ack_payload           *payload;
+    uint                  timer;
+    FILE *f;    
+    int total;
+
+
+    timer=sender_data_timer;    
+
+    last_seq=0;
+    start_seq=0;
+    prev_seq=0;
+    hasnacks=0;
+    sent_fin=0;
+
+    resend=0;
+    ack=WINDOW_SIZE-1;
+
+
+    if(debug==1)
+        printf("Entered sender\n");
+    //gethostname(my_name, NAME_LENGTH);
+    
     f = fopen(s_filename,"r");
     buffer = (char **)malloc(sizeof(char *)*WINDOW_SIZE);
     buffer[0] = (char *)malloc(sizeof(char)*WINDOW_SIZE*PAYLOAD_SIZE);
@@ -227,8 +229,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             if(debug==1)
                 printf("Received FINACK, FIN status = %d\n",sent_fin);
             fclose(f);
-            for(i=0;i<WINDOW_SIZE;i++){
-                free(buffer[i]);
+	    for(i=0;i<WINDOW_SIZE;i++){
                 free(packets[i]);
             }
             free(buffer);
@@ -237,7 +238,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                 break;
             }
             else{
-                sender(lossRate,s_filename,d_filename,host_name);
+                sender(lossRate,s_filename,d_filename);
             }
         }
     }
