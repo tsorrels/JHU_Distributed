@@ -66,10 +66,9 @@ typedef struct connection_type{
 
 
 /* receiver timer values in microseconds*/
-const uint recv_ack_timer = 5000;
+const uint recv_window_timer = 5000;
 const uint recv_go_timer = 5000;
 const uint recv_data_timer = 5000;
-const uint recv_ack_timer = 5000;
 
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 5000;

@@ -22,6 +22,7 @@ char * fileName = "file00";
 int fileCounter;
 int connectionSocketFD;
 int retryCounter;
+int debug;
 
 
 void closeConnection();
@@ -100,6 +101,9 @@ void clearWindow()
     int consecutiveIndex = -1;
     int highestSeqNum = -1;
 
+    if (debug == 1)
+	printf("Clearing window:\n");
+
     /* traverse, find highest seq_num */
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
 	if (window_buffer[i].received == 1 &&
@@ -107,6 +111,9 @@ void clearWindow()
 	    highestSeqNum = window_buffer[i].seq_num;
 	}
     }
+    if (debug == 1)
+	printf("Highest sequence number in window = %d\n", hightestSeqNum);
+
 
     /* traverse, find highest CONSECUTIVE seq_num */
     if (window_buffer[0].received == 1)
@@ -134,6 +141,11 @@ void clearWindow()
     }
     
     /* else never got first seq_num in window */
+
+
+    if (debug == 1)
+	printf("Highest consequitive sequence number = %d\n",consecutiveSeqNum);
+
 	
 
     /* slide window */
@@ -142,6 +154,11 @@ void clearWindow()
 	window_buffer[i].seq_num += consecutiveIndex;
 	window_buffer[i].seq_num += 1;
     } 
+
+    if (debug == 1)
+	printf("Sliding base of window to seq_num %d\n", );
+
+
 }
 
 
@@ -149,6 +166,7 @@ void sendAckNak()
 {
     int sizePacket;
     int sizePayload;
+    int i;
     ack_payload * payloadPointer;
     packet * ackPacket = buildAckNak();
 
@@ -157,6 +175,16 @@ void sendAckNak()
     sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int);
     
     sizePacket = sizePayload + sizeof(packet_header);
+
+    if (debug == 1){
+	printf("Sending ack = %d, num_nak = %d\n", payloadPointer->ack,
+	       payloadPointer->num_nak);
+
+	for (i = 0 ; i < payloadPointer->num_nak ; i ++){
+	    printf("nak %d\n", payloadPointer->naks[i]);
+	}
+    }
+
 
     /* send packet */
     sendto( connectionSocketFD, ackPacket, sizePacket, 0, 
@@ -169,6 +197,10 @@ void sendAckNak()
 /* called to send either a FINACK, WAIT, or GO packet */
 void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 {
+    if (debug == 1)
+	printf("Sending response type %d to address %d\n", type, 
+	       sendSockAddr.in_addr.s_addr);
+
     packet_header * response_packet = NULL;
     int sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
     if (sendingSocketTemp<0)
@@ -190,10 +222,13 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 
 void handleTimeout()
 {
+    if (debug == 1)
+	printf("In timeout, state = %d\n", state);
     switch(state)
     {
     case WAITING_DATA:
-	free(currentConnection);
+	/* free(currentConnection); */
+	closeConnection();
 	state = IDLE;
 	break;
 
@@ -201,6 +236,7 @@ void handleTimeout()
 	if (retryCounter == RECV_NUM_RETRY_ACK)
 	{
 	    closeConnection();
+	    state = IDLE;
 	}
 
 	else
@@ -220,13 +256,17 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 {
     fileCounter ++;
 
+    if (debug ==1 )
+	printf("creating new connection with %d\n",
+	    sendSockAddr.in_addr.s_addr);
+
     if (fileCounter > 99){
-	printf("ERROR: cannot write to more than 99 files; require restart\n");
+	perror("ERROR: cannot write to more than 99 files; require restart\n");
     }
 
     /* check whether a connection exists */
     if (currentConnection != NULL){
-	printf("ERROR: trying to create a new connection but one exists\n");
+	perror("ERROR: trying to create a new connection but one exists\n");
     }
 
     /* store connection data */
@@ -253,13 +293,17 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
     /* check whether a file is already open */
     if (currentFileHandle != NULL)
     {
-	printf("ERROR: trying to open file, but another file is open\n");
+	perror("ERROR: trying to open file, but another file is open\n");
     }
     currentFileHandle = fopen(fileName, "w");   
 }
 
 void closeConnection()
 {
+    if (debug == 1)
+	printf("closing connection\n");
+
+
     /* finish writing file */
     clearWindow();
 
@@ -284,7 +328,8 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	sentPacket->header.seq_num > (startOfWindow + WINDOW_SIZE) )
     {
 	/* discard */
-	printf("received datapacket outside window \n");
+	if (debug == 1)
+	    printf("received datapacket outside window \n");
     }
 
     /*  packet is in window */
@@ -300,7 +345,7 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	/* just double check the seq_num lines up with expected */
 	if (window_buffer[windowIndex].seq_num != sentPacket->header.seq_num)
 	{
-	    printf("ERROR: data packet not being loaded correctly in window\n");
+	    perror("ERROR: data packet not being loaded correctly in window\n");
 	}
 
 	/* copy and mark as received */
@@ -333,6 +378,11 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     //packet_type * type;
     int timer = 10; /* 10 usec default */
     int bufferFull = 0;
+
+    if (debug == 1)
+	printf("received packet type %d seq %d\n", sentPacket->type,
+	       sentPackeet->seq_num);
+
     
     /* check if FIN */
     if(sentPacket->header.type == FIN)
@@ -374,7 +424,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
 	{
 	    bufferFull = processDataPacket(sentPacket, numBytes);
 	    /* maybe set timer here */
-	    timer = recv_data_timer;
+	    timer = recv_window_timer;
 	}
     }
 
@@ -437,6 +487,7 @@ int main (int argc, char** argv)
     initializeWindowBuffer();
     currentFileHandle = NULL;
     state = IDLE;
+    debug = 1;
 
     return 0;
 
@@ -473,6 +524,9 @@ int main (int argc, char** argv)
     /* event loop */   
     timeout.tv_sec = 0; /* timeout will never be more than a second */
     timeout.tv_usec = 10; /* initial timeout value */
+
+    printf("Initialized: ready to receive\n");
+
     for(;;)
     {
         temp_mask = mask;
@@ -514,6 +568,8 @@ int main (int argc, char** argv)
         } 
 	else 
 	{ /* timer fired */
+	    if (debug == 1)
+		printf("timeout fired\n");
 	    handleTimeout();
         }	
     }
