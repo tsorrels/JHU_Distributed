@@ -20,7 +20,7 @@ packet * check(uint);
 void establish_conn(char *);
 fd_set mask,dummy_mask;
 int host_num;
-int ss,sr;
+int ss,sr,debug=1;
 struct sockaddr_in    send_addr;
 
 int main(int argc, char** argv)
@@ -32,6 +32,8 @@ int main(int argc, char** argv)
     s_filename = argv[2];
     d_filename = strtok(argv[3],"@");
     host_name = strtok(NULL,"@");
+    if(debug ==1)
+        printf("LossRate = %d, source_filename = %s, destination_filename = %s, hostname = %s",lossRate, s_filename, d_filename,host_name);
     sender(lossRate,s_filename,d_filename,host_name);
     
 }
@@ -97,6 +99,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         buffer[i] = (*buffer + PAYLOAD_SIZE*i);
         packets[i] = malloc(sizeof(packet));
     }
+    if(debug==1)
+        printf("Establishing connection");
     establish_conn(d_filename);
     int total=WINDOW_SIZE;
     while(1){
@@ -105,6 +109,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                 total=(payload->naks[0])-prev_seq;
             else
                 total = ack+1;
+            if(debug==1)
+                    printf("Reading %d packets",total);
             for(j=0;j<total;j++){
                 read = fread(buffer[(start_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
                 size[(start_seq+j)%WINDOW_SIZE]=read;
@@ -113,6 +119,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             }
         }
         if(j>0){
+            if(debug==1)
+                    printf("Sending %d packets",j);
             for(i=0;i<j;i++){
                 for(h=0;h<size[(start_seq+i)%WINDOW_SIZE];h++)
                     packets[(start_seq+i)%WINDOW_SIZE]->data[h] = buffer[(start_seq+i)%WINDOW_SIZE][h];
@@ -124,6 +132,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             timer = sender_data_timer;
         }
         else if((read<=0)&&(hasnacks==0)&&(ack==(last_seq-1))){
+            if(debug==1)
+                    printf("Sending FIN packet");
             packets[0]->header.type=FIN;
             sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -132,12 +142,16 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         }
         if((hasnacks==1)||(ack<(last_seq-1))){
             if(hasnacks==1){
+                if(debug==1)
+                    printf("Resending NAKS");
                 for(k=0;k<payload->num_nak;k++){
                     sendto_dbg( ss, (char *)packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet), 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
                 }
             }
             if(ack<(last_seq-1)){
+                if(debug==1)
+                    printf("Resending packets after ACK");
                 for(k=ack+1;k<last_seq;k++){
                     sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet), 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -148,6 +162,8 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         packet * rec = check(timer);
         if(rec == NULL){
             resend = 1;
+            if(debug==1)
+                printf("Resending the last window");
             continue;
         }
         if(rec->header.type == ACK){
@@ -161,8 +177,12 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
                 hasnacks = 1;
             else
                 hasnacks = 0;
+            if(debug==1)
+                printf("Received ACK/NACK packet with ACK = %d and num_nak = %d",ack,payload->num_nak);
         }
         else if(rec->header.type == FINACK){
+            if(debug==1)
+                printf("Received FINACK, FIN status = %d",sent_fin);
             if(sent_fin==1){
                 fclose(f);
                 for(i=0;i<WINDOW_SIZE;i++){
@@ -186,14 +206,21 @@ void establish_conn(char *filename){
         strcpy(start->data, filename);
         sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
+        if(debug==1)
+            printf("Sent syn packet");
         packet * rec = check(sender_syn_timer);
-        if(rec == NULL)
+        if(rec == NULL){
+            if(debug==1)
+                printf("Sender timed out.");
             continue;
+        }
         else if(rec->header.type == WAIT){
-            //TODO
+            printf("Receiver is busy, will retry after some time.");
             sleep(sender_wait_timer);
         }
         else if(rec->header.type == GO)
+            if(debug == 1)
+                printf("Received Go!");
             return;
     }    
 }
@@ -219,6 +246,8 @@ packet * check(uint timer){
                               (struct sockaddr *)&from_addr, 
                               &from_len );
                     //mess_buf[bytes] = 0;
+                    if(debug==1)
+                        printf("Received packet");
                     from_ip = from_addr.sin_addr.s_addr;
                     if(host_num == from_ip){
                         mess = (packet *)mess_buf;
