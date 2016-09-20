@@ -527,7 +527,7 @@ int main (int argc, char** argv)
 
     /* event loop */   
     timeout.tv_sec = 1; /* timeout will never be more than a second */
-    timeout.tv_usec = 10; /* initial timeout value */
+    timeout.tv_usec = 0; /* initial timeout value */
 
     printf("Initialized: ready to receive\n");
 
@@ -575,6 +575,9 @@ int main (int argc, char** argv)
 	    if (debug == 1)
 		printf("timeout fired\n");
 	    handleTimeout();
+	    timeout.tv_sec = 1; /* timeout will never be more than a second */
+	    timeout.tv_usec = 0; /* initial timeout value */
+	    
         }	
     }
 
