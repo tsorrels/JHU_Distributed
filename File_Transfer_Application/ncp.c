@@ -226,13 +226,14 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
         else if(rec->header.type == FINACK){
             if(debug==1)
                 printf("Received FINACK, FIN status = %d\n",sent_fin);
+            fclose(f);
+            for(i=0;i<WINDOW_SIZE;i++){
+                free(buffer[i]);
+                free(packets[i]);
+            }
+            free(buffer);
+            close(sr);
             if(sent_fin==1){
-                fclose(f);
-                for(i=0;i<WINDOW_SIZE;i++){
-                    free(buffer[i]);
-                    free(packets[i]);
-                }
-                free(buffer);
                 break;
             }
             else{
