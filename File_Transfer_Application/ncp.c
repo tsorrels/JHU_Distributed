@@ -11,51 +11,90 @@
 #include "sendto_dbg.h"
 #define NAME_LENGTH 80
 
-//int gethostname(char*,size_t);
 
-void sender(int lossRate, char *s_filename, char *d_filename, char *host_name);
-void establish_conn(char *filename);
-packet * check(uint timer);
-fd_set mask,dummy_mask;
+
+fd_set mask;
+fd_set dummy_mask;
 int host_num;
-int ss,sr,debug=1;
+int ss;
+int sr;
+int debug;
 struct sockaddr_in    send_addr;
 
-int main(int argc, char** argv)
+
+
+
+packet * check(uint timer);
+void sender(int lossRate, char * s_filename, char * d_filename, char * host_name);
+void establish_conn(char *filename);
+
+
+int main(int argc, char ** argv)
 {
-    char                  *s_filename,*host_name;
-    char                  *d_filename;
-    int                   lossRate;
+
+    char * s_filename;
+    char * host_name;
+    char * d_filename;
+    int lossRate;
+    debug = 1;
     if(debug==1)
-        printf("Starting sender");
+        printf("Starting sender\n");
+
+
     s_filename = malloc(NAME_LENGTH);
+
     d_filename = malloc(NAME_LENGTH);
+
     host_name = malloc(NAME_LENGTH);
+
     lossRate = atoi(argv[1]);
+
     s_filename = argv[2];
+
     d_filename = strtok(argv[3],"@");
     host_name = strtok(NULL,"@");
+
     if(debug ==1)
         printf("LossRate = %d, source_filename = %s, destination_filename = %s, hostname = %s",lossRate, s_filename, d_filename,host_name);
+/*
     sender(lossRate,s_filename,d_filename,host_name);
-    
+*/
+    return 0;
 }
 void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
 {
     struct sockaddr_in    name;
     struct hostent        h_ent;
     struct hostent        *p_h_ent;
-    //char                  my_name[NAME_LENGTH] = {'\0'};
-    int                   i,j,k,h,read,resend=0,ack=WINDOW_SIZE-1;
-    int                   last_seq=0,start_seq=0,prev_seq=0,hasnacks=0,sent_fin=0;
+    int                   i,j,k,h,read,resend,ack;
+    int                   last_seq;
+    int start_seq;
+    int prev_seq;
+    int hasnacks;
+    int sent_fin;
     int                   size[WINDOW_SIZE];
     char                  **buffer;
     packet                *packets[WINDOW_SIZE];
     packet                *rec;
     ack_payload           *payload;
-    uint                  timer=sender_data_timer;
-    
-    
+    uint                  timer;
+    FILE *f;    
+    int total;
+
+
+    timer=sender_data_timer;    
+
+    last_seq=0;
+    start_seq=0;
+    prev_seq=0;
+    hasnacks=0;
+    sent_fin=0;
+
+    resend=0;
+    ack=WINDOW_SIZE-1;
+
+
+
     //gethostname(my_name, NAME_LENGTH);
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
@@ -95,7 +134,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     FD_ZERO( &dummy_mask );
     FD_SET( sr, &mask );
     sendto_dbg_init(lossRate);
-    FILE *f = fopen(s_filename,"r");
+    f = fopen(s_filename,"r");
     buffer = (char **)malloc(sizeof(char *)*WINDOW_SIZE);
     buffer[0] = (char *)malloc(sizeof(char)*WINDOW_SIZE*PAYLOAD_SIZE);
     for(i=0;i<WINDOW_SIZE;i++){
@@ -105,7 +144,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     if(debug==1)
         printf("Establishing connection");
     establish_conn(d_filename);
-    int total=WINDOW_SIZE;
+    total=WINDOW_SIZE;
     while(1){
         if((resend == 0)&&((hasnacks==0)||((payload->naks[0])>prev_seq))){
             if(hasnacks==1)
@@ -162,7 +201,7 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
             }
             timer = sender_data_timer;
         }
-        packet * rec = check(timer);
+        rec = check(timer);
         if(rec == NULL){
             resend = 1;
             if(debug==1)
@@ -202,16 +241,17 @@ void sender(int lossRate, char *s_filename, char *d_filename, char *host_name)
     }
 }
 void establish_conn(char *filename){
-    //TODO
     while(1){
-        packet *start=malloc(sizeof(packet));
+        packet *start;
+	packet * rec;
+	start =malloc(sizeof(packet));
         start->header.type=SYN;
         strcpy(start->data, filename);
         sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
         if(debug==1)
             printf("Sent syn packet");
-        packet * rec = check(sender_syn_timer);
+        rec = check(sender_syn_timer);
         if(rec == NULL){
             if(debug==1)
                 printf("Sender timed out.");
@@ -236,12 +276,13 @@ packet * check(uint timer){
     packet *mess;
     char mess_buf[MAX_MESS_LEN];
     fd_set temp_mask;
+    int num;
     while(1){
         temp_mask = mask;
         timeout.tv_sec = 0;
         //TODO
         timeout.tv_usec = timer;
-        int num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
+        num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
         if (num > 0) {
                 if ( FD_ISSET( sr, &temp_mask) ) {
                     from_len = sizeof(from_addr);
