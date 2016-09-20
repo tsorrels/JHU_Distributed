@@ -112,7 +112,7 @@ void clearWindow()
 	}
     }
     if (debug == 1)
-	printf("Highest sequence number in window = %d\n", hightestSeqNum);
+	printf("Highest sequence number in window = %d\n", highestSeqNum);
 
 
     /* traverse, find highest CONSECUTIVE seq_num */
@@ -156,9 +156,8 @@ void clearWindow()
     } 
 
     if (debug == 1)
-	printf("Sliding base of window to seq_num %d\n", );
-
-
+	printf("Sliding base of window to seq_num %d\n", 
+	    window_buffer[0].seq_num);
 }
 
 
@@ -171,7 +170,7 @@ void sendAckNak()
     packet * ackPacket = buildAckNak();
 
     /* determine size of payload */
-    payloadPointer = ackPacket->data;
+    payloadPointer = (ack_payload *)ackPacket->data;
     sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int);
     
     sizePacket = sizePayload + sizeof(packet_header);
@@ -197,12 +196,19 @@ void sendAckNak()
 /* called to send either a FINACK, WAIT, or GO packet */
 void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
 {
+
+    packet_header * response_packet;
+    int sendingSocketTemp;;
+
+    response_packet = NULL;
+    sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
+
     if (debug == 1)
 	printf("Sending response type %d to address %d\n", type, 
-	       sendSockAddr.in_addr.s_addr);
+	       sendSockAddr.sin_addr.s_addr);
 
-    packet_header * response_packet = NULL;
-    int sendingSocketTemp = socket(AF_INET, SOCK_DGRAM, 0);
+
+
     if (sendingSocketTemp<0)
     {
 	perror("Failed in creating socket to send WAIT; continuing\n");
@@ -258,7 +264,7 @@ void createNewConnection(struct sockaddr_in sendSockAddr)
 
     if (debug ==1 )
 	printf("creating new connection with %d\n",
-	    sendSockAddr.in_addr.s_addr);
+	    sendSockAddr.sin_addr.s_addr);
 
     if (fileCounter > 99){
 	perror("ERROR: cannot write to more than 99 files; require restart\n");
@@ -380,8 +386,8 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     int bufferFull = 0;
 
     if (debug == 1)
-	printf("received packet type %d seq %d\n", sentPacket->type,
-	       sentPackeet->seq_num);
+	printf("received packet type %d seq %d\n", sentPacket->header.type,
+	       sentPacket->header.seq_num);
 
     
     /* check if FIN */
@@ -408,7 +414,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
 	//TODO: two sockets
 	sendResponsePacket(GO, sendSockAddr); 
 	state = WAITING_DATA;
-	timer = recv_go_timer;
+	timer = recv_data_timer;
     }
 
     /* check if this is the active connection */
@@ -418,7 +424,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
 	{
 	    /* something is a little out of synch, just resend GO */
 	    sendResponsePacket(GO, sendSockAddr); 
-	    timer = recv_go_timer;
+	    timer = recv_data_timer;
 	}
 	else if (sentPacket->header.type == DATA)
 	{
@@ -442,7 +448,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
 
     else
     {
-	printf("ERROR: reached a catch block indicating sender did not have a rule to process a packet received in this state\n");
+	perror("ERROR: reached a catch block indicating sender did not have a rule to process a packet received in this state\n");
     }
 
     return timer;
