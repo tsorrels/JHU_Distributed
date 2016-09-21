@@ -217,6 +217,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             prev_seq = start_seq;
             start_seq = last_seq;
             last_seq += i;
+            i=0;
             ack = payload->ack;
             if(payload->num_nak>0)
                 hasnacks = 1;
