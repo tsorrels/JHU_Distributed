@@ -159,7 +159,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             for(j=0;j<total;j++){
                 read = fread(buffer[(start_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
                 size[(start_seq+j)%WINDOW_SIZE]=read;
-                if(read<PAYLOAD_SIZE)
+                if(read==0)
                     break;
             }
         }
