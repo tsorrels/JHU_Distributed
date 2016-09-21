@@ -171,7 +171,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                     packets[(start_seq+i)%WINDOW_SIZE]->data[h] = buffer[(start_seq+i)%WINDOW_SIZE][h];
                 packets[(start_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
                 packets[(start_seq+i)%WINDOW_SIZE]->header.type=DATA;
-                sendto_dbg( ss, (char *)packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet), 0, 
+                sendto_dbg( ss, (char *)packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(start_seq+i)%WINDOW_SIZE], 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             }
             timer = sender_data_timer;
@@ -190,7 +190,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 if(debug==1)
                     printf("Resending NAKS\n");
                 for(k=0;k<payload->num_nak;k++){
-                    sendto_dbg( ss, (char *)packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet), 0, 
+                    sendto_dbg( ss, (char *)packets[(payload->naks[k])%WINDOW_SIZE], sizeof(packet_header)+size[(payload->naks[k])%WINDOW_SIZE], 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
                 }
             }
@@ -198,7 +198,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 if(debug==1)
                     printf("Resending packets after ACK\n");
                 for(k=ack+1;k<last_seq;k++){
-                    sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet), 0, 
+                    sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet_header)+size[(k)%WINDOW_SIZE], 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
                 }
             }
