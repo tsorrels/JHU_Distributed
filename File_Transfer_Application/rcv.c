@@ -10,7 +10,7 @@
 
 
 #include "packet_header.h"
-
+#include "sendto_dbg.h"
 
 #define NAME_LENGTH 80
 
@@ -58,6 +58,10 @@ packet * buildAckNak()
     int highestSeqNum = -1;
     int highestRecIndex = -1;
 
+
+    if (debug == 1)
+        printf("Building ack/nak packet\n");
+    
     /* traverse, find highest seq_num and corrosponding index*/
     for (i = 0 ; i < WINDOW_SIZE ; i ++)
     {
@@ -68,10 +72,14 @@ packet * buildAckNak()
 	}	
     }
 
+    if (debug == 1)
+      printf("loop 1 ran, highest received index = %d\n", highestRecIndex);
+
+    
     /* check for anamoly */
     if (highestSeqNum == -1)
     {
-	printf("ERROR: buildAckNak did not find packet in winwdow\n");
+	perror("ERROR: buildAckNak did not find packet in winwdow\n");
     }
      
     /* traverse, determine naks */
@@ -82,14 +90,33 @@ packet * buildAckNak()
 	}
     }
 
+    if (debug == 1)
+        printf("loop 2 ran\n");
+
+    
     ackPacket = malloc(sizeof(packet));
     ackPacket->header.type = ACK;
-    payload = (ack_payload *) ackPacket->data;
+    payload = (ack_payload *) (ackPacket->data);
     payload->ack = highestSeqNum;
     payload->num_nak = numNak;    
 
-    memcpy(payload->naks, nakArray, sizeof(int) * numNak);
- 
+    if (debug == 1)
+      printf("about to run memcpy, numNak = %d\n", numNak);
+
+    /*
+    printf("nakArray is at %p\n", nakArray);
+    printf("nakArray is at %d\n", nakArray[0]);
+    printf("payload pointer is poiting to %p\n", payload);
+    printf("packet pointer is pointing to %p\n", ackPacket);
+    printf("payload naks is pointing to %p\n", payload->naks);
+    */    
+
+    memcpy((payload->naks), nakArray, sizeof(int) * numNak);
+
+    if (debug == 1)
+        printf("returning from ack build\n");
+
+    
     return ackPacket;
 }
 
@@ -184,7 +211,7 @@ void sendAckNak()
     packet * ackPacket = buildAckNak();
 
     /* determine size of payload */
-    payloadPointer = (ack_payload *)ackPacket->data;
+    payloadPointer = (ack_payload *)  (ackPacket->data);
     sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int);
     
     sizePacket = sizePayload + sizeof(packet_header);
@@ -194,13 +221,13 @@ void sendAckNak()
 	       payloadPointer->num_nak);
 
 	for (i = 0 ; i < payloadPointer->num_nak ; i ++){
-	    printf("nak %d\n", payloadPointer->naks[i]);
+	  printf("nak %d\n", (payloadPointer->naks)[i] );
 	}
     }
 
 
     /* send packet */
-    sendto( connectionSocketFD, ackPacket, sizePacket, 0, 
+    sendto_dbg( connectionSocketFD, ackPacket, sizePacket, 0, 
 	    (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
@@ -240,7 +267,7 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
     toAddress.sin_port = htons(PORT);
     
     /* send wait, address to whoever sent original packet */
-    sendto(sendingSocketTemp, response_packet, sizeof(packet_header), 0, 
+    sendto_dbg(sendingSocketTemp, response_packet, sizeof(packet_header), 0, 
 	   (struct sockaddr *)&toAddress, sizeof(toAddress));
 	
     /* close temporary socket */
@@ -262,7 +289,9 @@ void handleTimeout()
 	break;
 
     case RECV_DATA:
-	if (retryCounter == RECV_NUM_RETRY_ACK)
+        if (debug == 1)
+  	    printf("retry counter = %d\n", retryCounter);
+        if (retryCounter == RECV_NUM_RETRY_ACK)
 	{
 	    closeConnection();
 	    state = IDLE;
@@ -541,6 +570,7 @@ int main (int argc, char** argv)
     printf("Loss rate set to %d\n", lossRate);
 
     /* initialize */
+    sendto_dbg_init(lossRate);
     fileIterator = 1;
     fileCounter = 0;
     connectionSocketFD = -1;

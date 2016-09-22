@@ -52,7 +52,7 @@ typedef struct packet_buffer_type{
 typedef struct ack_payload_type{
     int ack;
     int num_nak;
-    int * naks;
+    int naks [WINDOW_SIZE];
 } ack_payload;
 
 
