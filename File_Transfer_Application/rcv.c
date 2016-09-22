@@ -210,19 +210,22 @@ void sendAckNak()
     int sizePacket;
     int sizePayload;
     int i;
+/*
     ack_payload * payloadPointer;
-    /*
+    
     packet * ackPacket = buildAckNak(); 
     */
 
     ack_packet * packet = buildAckNak();
     
-    /* determine size of payload */
+    /* determine size of payload 
     payloadPointer = (ack_payload *)  (ackPacket->data);
     sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int)
       + sizeof(int);
     
     sizePacket = sizePayload + sizeof(packet_header);
+
+    */
 
     if (debug == 1){
 	printf("Sending ack = %d, num_nak = %d\n", packet->ack,
@@ -240,7 +243,7 @@ void sendAckNak()
 	    (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
-    free(ackPacket);
+    free(packet);
 }
 
 /* called to send either a FINACK, WAIT, or GO packet */
