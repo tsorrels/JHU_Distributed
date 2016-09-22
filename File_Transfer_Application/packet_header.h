@@ -32,7 +32,7 @@ typedef struct ack_packet_type{
     int ack;
     int num_nak;
     int naks [WINDOW_SIZE];
-}
+} ack_packet;
   
 
 
