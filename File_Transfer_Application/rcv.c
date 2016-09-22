@@ -209,10 +209,13 @@ void sendAckNak()
     int i;
     ack_payload * payloadPointer;
     packet * ackPacket = buildAckNak();
-
+    int * intPointer;
+    intPointer = ackPacket;
+    
     /* determine size of payload */
     payloadPointer = (ack_payload *)  (ackPacket->data);
-    sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int);
+    sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int)
+      + sizeof(int);
     
     sizePacket = sizePayload + sizeof(packet_header);
 
@@ -226,8 +229,15 @@ void sendAckNak()
     }
 
 
+    printf("in ackPacket, ACK = %d\n", ((ack_payload *)ackPacket->data)->ack);
+
+    for (i = 0 ; i < 40 ; i ++){
+      printf("%d\n", intPointer[i]);
+    }
+
+    
     /* send packet */
-    sendto_dbg( connectionSocketFD, ackPacket, sizePacket, 0, 
+    sendto_dbg( connectionSocketFD, ackPacket, sizeof(packet), 0, 
 	    (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
