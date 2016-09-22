@@ -27,6 +27,13 @@ typedef enum {
 } receiver_state_type;
 
 
+
+
+typedef struct packet_header_type {
+    int seq_num;
+    packet_type type;
+} packet_header;
+
 typedef struct ack_packet_type{
     packet_header header;
     int ack;
@@ -35,11 +42,6 @@ typedef struct ack_packet_type{
 } ack_packet;
   
 
-
-typedef struct packet_header_type {
-    int seq_num;
-    packet_type type;
-} packet_header;
 
 
 typedef struct packet_type{
@@ -61,7 +63,7 @@ typedef struct ack_payload_type{
     int num_nak;
     int naks [WINDOW_SIZE];
 } ack_payload;
-*/:
+*/
 
 
 typedef struct connection_type{

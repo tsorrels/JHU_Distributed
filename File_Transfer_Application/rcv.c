@@ -47,17 +47,15 @@ void initializeWindowBuffer()
     }  
 }
 
-packet * buildAckNak()
+ack_packet * buildAckNak()
 {
     int i;
     int numNak = 0;
-    ack_payload * payload;
     int nakArray [WINDOW_SIZE];
-    packet * ackPacket;
+    ack_packet * ackPacket;
     int consecutiveSeqNum = -1;
     int highestSeqNum = -1;
     int highestRecIndex = -1;
-
 
     if (debug == 1)
         printf("Building ack/nak packet\n");
@@ -94,12 +92,17 @@ packet * buildAckNak()
         printf("loop 2 ran\n");
 
     
-    ackPacket = malloc(sizeof(packet));
+    ackPacket = malloc(sizeof(ack_packet));
     ackPacket->header.type = ACK;
+    /*
     payload = (ack_payload *) (ackPacket->data);
     payload->ack = highestSeqNum;
     payload->num_nak = numNak;    
+    */
 
+    ackPacket->ack = highestSeqNum;
+    ackPacket->num_nak = numNak;
+        
     if (debug == 1)
       printf("about to run memcpy, numNak = %d\n", numNak);
 
@@ -111,7 +114,7 @@ packet * buildAckNak()
     printf("payload naks is pointing to %p\n", payload->naks);
     */    
 
-    memcpy((payload->naks), nakArray, sizeof(int) * numNak);
+    memcpy((ackPacket->naks), nakArray, sizeof(int) * numNak);
 
     if (debug == 1)
         printf("returning from ack build\n");
@@ -208,9 +211,11 @@ void sendAckNak()
     int sizePayload;
     int i;
     ack_payload * payloadPointer;
-    packet * ackPacket = buildAckNak();
-    int * intPointer;
-    intPointer = ackPacket;
+    /*
+    packet * ackPacket = buildAckNak(); 
+    */
+
+    ack_packet * packet = buildAckNak();
     
     /* determine size of payload */
     payloadPointer = (ack_payload *)  (ackPacket->data);
@@ -220,24 +225,18 @@ void sendAckNak()
     sizePacket = sizePayload + sizeof(packet_header);
 
     if (debug == 1){
-	printf("Sending ack = %d, num_nak = %d\n", payloadPointer->ack,
-	       payloadPointer->num_nak);
+	printf("Sending ack = %d, num_nak = %d\n", packet->ack,
+	       packet->num_nak);
 
-	for (i = 0 ; i < payloadPointer->num_nak ; i ++){
-	  printf("nak %d\n", (payloadPointer->naks)[i] );
+	for (i = 0 ; i < packet->num_nak ; i ++){
+	  printf("nak %d\n", (packet->naks)[i] );
 	}
     }
 
 
-    printf("in ackPacket, ACK = %d\n", ((ack_payload *)ackPacket->data)->ack);
-
-    for (i = 0 ; i < 40 ; i ++){
-      printf("%d\n", intPointer[i]);
-    }
-
     
     /* send packet */
-    sendto_dbg( connectionSocketFD, ackPacket, sizeof(packet), 0, 
+    sendto_dbg( connectionSocketFD, packet, sizeof(ack_packet), 0, 
 	    (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
