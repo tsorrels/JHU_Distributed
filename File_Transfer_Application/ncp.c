@@ -302,7 +302,7 @@ ack_packet * check(uint timer){
         if (num > 0) {
                 if ( FD_ISSET( sr, &temp_mask) ) {
                     from_len = sizeof(from_addr);
-                    recvfrom( sr, mess_buf, sizeof(mess_buf), 0,  
+                    recvfrom( sr, mess_buf, MAX_MESS_LEN, 0,  
                               (struct sockaddr *)&from_addr, 
                               &from_len );
                     //mess_buf[bytes] = 0;
