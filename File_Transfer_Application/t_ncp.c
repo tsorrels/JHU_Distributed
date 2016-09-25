@@ -61,7 +61,9 @@ int main(int argc,char *argv[])
         mess_buf = malloc(MAX_MESS_LEN);
         neto_mess_ptr = mess_buf+sizeof(mess_len);
         if(i==0){
-            neto_mess_ptr = d_filename;
+            for(int k=0;k<strlen(d_filename);k++){
+            *(neto_mess_ptr+k) = *(d_filename+k);
+            }
             mess_len = strlen(d_filename) + sizeof(mess_len);
             i++;
         }
@@ -74,7 +76,6 @@ int main(int argc,char *argv[])
         mess_len = bytes + sizeof(mess_len);
         }
         memcpy( mess_buf, &mess_len, sizeof(mess_len) );
-
         ret = send( s, mess_buf, mess_len, 0);
         if(ret != mess_len) 
         {
