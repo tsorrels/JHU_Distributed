@@ -54,19 +54,22 @@ int main()
             if ( FD_ISSET(s,&temp_mask) ) {
                 recv_s[j] = accept(s, 0, 0) ;
                 FD_SET(recv_s[j], &mask);
+                temp_mask = mask;
                 valid[j] = 1;
                 i=0;
             }
             for(;;)
-            {   
-                if (valid[j])    
-                if ( FD_ISSET(recv_s[j],&temp_mask) ) {
+            {
+                if (valid[j]){
+                if ( FD_ISSET(recv_s[j],&temp_mask) ) { 
+                    printf("Starting to receive\n"); 
                     if( recv(recv_s[j],&mess_len,sizeof(mess_len),0) > 0) {
+                        printf("Packet value=%d\n",mess_len);
                         neto_len = mess_len - sizeof(mess_len);
                         mess_buf = malloc(neto_len+1);
                         recv(recv_s[j], mess_buf, neto_len, 0 );
+                        printf("Packet size=%d\n",neto_len);
                         if(i==0){
-                            mess_buf[neto_len] = '\0';
                             f = fopen(mess_buf,"w");
                             i++;
                             free(mess_buf);
@@ -85,7 +88,9 @@ int main()
                         flag=1;
                         break;
                     }
-                }
+                }}
+                else
+                    break;
             }
         }
         if(flag==1)
