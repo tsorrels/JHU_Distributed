@@ -17,6 +17,8 @@
 receiver_state_type state;
 connection * currentConnection;
 packet_buffer * window_buffer;
+int window_min_seq;
+int window_max_seq;
 FILE * currentFileHandle;
 char * fileName = "file00";
 int fileCounter;
@@ -45,6 +47,9 @@ void initializeWindowBuffer()
 	window_buffer[i].seq_num = i;
 	/* omit initializing buffer for data */
     }  
+
+    window_min_seq = 0;
+    window_max_seq= WINDOW_SIZE - 1;
 }
 
 ack_packet * buildAckNak()
@@ -81,8 +86,9 @@ ack_packet * buildAckNak()
     }
      
     /* traverse, determine naks */
-    for (i = 0 ; i < highestRecIndex ; i ++){
-	if (window_buffer[i].received == 0){
+    for (i = 0 ; i < WINDOW_SIZE ; i ++){
+	if (window_buffer[i].received == 0 &&
+	    window_buffer[i].seq_num < highestSeqNum){
 	    nakArray[numNak] = window_buffer[i].seq_num;
 	    numNak ++;
 	}
@@ -127,11 +133,14 @@ ack_packet * buildAckNak()
 void clearWindow()
 {
     int i;
+    int j;
     int consecutiveSeqNum = -1;
     int consecutiveIndex = -1;
     int highestIndex = -1;
     int highestSeqNum = -1;
     int numBytesWritten;
+    int min_seq_index = -1;
+    int max_seq_index = -1;
     
     if (debug == 1)
 	printf("Clearing window:\n");
@@ -144,14 +153,34 @@ void clearWindow()
 	    highestIndex = i;
 	}
     }
+
+    /* traverse, find highest seq_num */
+    /*
+    i = window_min_seq;
+    j = WINDOW_SIZE - 1;
+    if (i == 0){
+        j = i - 1;
+    }
+    while (i != (j -1) ){
+	if (window_buffer[i].received == 1 &&
+	   (window_buffer[i].seq_num > highestSeqNum) ){
+	    highestSeqNum = window_buffer[i].seq_num;
+	    highestIndex = i;
+	}
+	i = (i + 1) % WINDOW_SIZE;
+    }
+    */
     if (debug == 1)
 	printf("Highest sequence number in window = %d\n", highestSeqNum);
 
 
     /* traverse, find highest CONSECUTIVE seq_num */
-    if (window_buffer[0].received == 1)
+    min_seq_index = window_min_seq % WINDOW_SIZE;
+    max_seq_index = (min_seq_index + WINDOW_SIZE - 1) % WINDOW_SIZE;
+    if (window_buffer[min_seq_index].received == 1)
     {
-	for (i = 0 ; i <= highestIndex ; i ++)
+        i = min_seq_index;
+	do
 	{
 	    if (window_buffer[i].received == 1 ){
 		consecutiveSeqNum = window_buffer[i].seq_num;
@@ -160,8 +189,8 @@ void clearWindow()
 		consecutiveIndex = i;
 
 		if (debug == 1)
-		    printf("Writing packet with seq_num %d\n",
-			   consecutiveSeqNum);
+		    printf("Writing packet with seq_num %d from index %d\n",
+			   consecutiveSeqNum, i);
 		
 		/* write the packet to the file */
 		numBytesWritten = fwrite(window_buffer[i].packet_bytes.data,
@@ -171,37 +200,51 @@ void clearWindow()
 
 		if (debug == 1)
 		  printf("Wrote %d bytes\n", numBytesWritten);
-
-
 		
 		/* mark packet window as empty */
 		window_buffer[i].received = 0;
+
+		/* update next expected seq num at this index */
+		window_buffer[i].seq_num += WINDOW_SIZE;
+		
+		
 	    }
 	    else{
 		/* break loop */
 		break;
 	    }
-	}
+	    i = (i + 1) % WINDOW_SIZE;
+	} while (i != (max_seq_index + 1) % WINDOW_SIZE);
     }
     
     /* else never got first seq_num in window */
 
 
     if (debug == 1)
-	printf("Highest consequitive sequence number = %d\n",consecutiveSeqNum);
+	printf("Highest consequitive seq number = %d\n",consecutiveSeqNum);
 
-	
 
     /* slide window */
-    for (i = 0 ; i < WINDOW_SIZE ; i ++)
+
+    if (consecutiveSeqNum != -1){
+        window_min_seq = consecutiveSeqNum + 1;
+	window_max_seq = window_min_seq + WINDOW_SIZE - 1;
+    }
+    /*
+    min_seq_index = window_min_seq % WINDOW_SIZE;
+    max_seq_index = (min_seq_index + WINDOW_SIZE - 1) % WINDOW_SIZE;
+    */
+   
+    for (i = window_min_seq ; i <= consecutiveIndex ; i ++)
     {
-	window_buffer[i].seq_num += consecutiveIndex;
-	window_buffer[i].seq_num += 1;
+        /*
+	window_buffer[i].seq_num += WINDOW_SIZE;
+	window_buffer[i].seq_num += 1;*/
     } 
 
     if (debug == 1)
 	printf("Sliding base of window to seq_num %d\n", 
-	    window_buffer[0].seq_num);
+	    window_min_seq);
 }
 
 
@@ -311,6 +354,7 @@ void handleTimeout()
 
 	else
 	{
+     	    clearWindow();
 	    sendAckNak();
 	    /* resend ack/nak */
 	    retryCounter ++;
@@ -407,18 +451,16 @@ int processDataPacket(packet * sentPacket, int numBytes)
     int windowIndex;
     int bufferFilled = 0;
 
-
-    startOfWindow = window_buffer[0].seq_num;    
+    startOfWindow = window_min_seq;    
 
     if (debug == 1)
       printf("Window starts at seq_num = %d, size = %d\n",
 	     startOfWindow, numBytes);
       
-
     
     /* check if packet is in window */
-    if ( (sentPacket->header.seq_num < startOfWindow) ||
-	 (sentPacket->header.seq_num > (startOfWindow + WINDOW_SIZE)) )
+    if ( (sentPacket->header.seq_num < window_min_seq) ||
+	 (sentPacket->header.seq_num > (window_max_seq)) )
     {
 	/* discard */
 	if (debug == 1)
@@ -434,11 +476,11 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	}
 
 	/* load packet */
-	windowIndex = sentPacket->header.seq_num - startOfWindow;
+	windowIndex = sentPacket->header.seq_num % WINDOW_SIZE;
 	/* just double check the seq_num lines up with expected */
 	if (window_buffer[windowIndex].seq_num != sentPacket->header.seq_num)
 	{
-	    perror("ERROR: data packet not being loaded correctly in window\n");
+	    perror("ERROR:data packet not being loaded correctly in window\n");
 	}
 
 	if (debug == 1)
@@ -457,7 +499,7 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	if (( windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0) &&
 	windowIndex != 0 ) */
 
-	if ( windowIndex == WINDOW_SIZE - 1)
+	if (sentPacket->header.seq_num == window_max_seq)
 	{
 	    sendAckNak();
 	    clearWindow(); /* this writes data and slides window */
