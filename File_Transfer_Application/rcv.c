@@ -35,6 +35,13 @@ void sendAckNak();
 
 
 
+
+int cmpfunc (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+
+
 void initializeWindowBuffer()
 {
     int i;
@@ -86,6 +93,10 @@ ack_packet * buildAckNak()
     }
      
     /* traverse, determine naks */
+
+
+    
+    
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
 	if (window_buffer[i].received == 0 &&
 	    window_buffer[i].seq_num < highestSeqNum){
@@ -94,6 +105,8 @@ ack_packet * buildAckNak()
 	}
     }
 
+
+    
     if (debug == 1)
         printf("loop 2 ran\n");
 
@@ -120,6 +133,9 @@ ack_packet * buildAckNak()
     printf("payload naks is pointing to %p\n", payload->naks);
     */    
 
+
+    qsort(nakArray, numNak, sizeof(int), cmpfunc);
+    
     memcpy((ackPacket->naks), nakArray, sizeof(int) * numNak);
 
     if (debug == 1)
@@ -198,8 +214,9 @@ void clearWindow()
 					 window_buffer[i].length,
 					 currentFileHandle);
 
+		/*
 		if (debug == 1)
-		  printf("Wrote %d bytes\n", numBytesWritten);
+		printf("Wrote %d bytes\n", numBytesWritten); */
 		
 		/* mark packet window as empty */
 		window_buffer[i].received = 0;
@@ -343,9 +360,16 @@ void handleTimeout()
 	state = IDLE;
 	break;
 
-    case RECV_DATA:
+    case WAIT_RESPONSE:
         if (debug == 1)
   	    printf("retry counter = %d\n", retryCounter);
+
+	sendAckNak();
+	retryCounter ++;
+
+	break;
+	    
+    case RECV_DATA:
         if (retryCounter == RECV_NUM_RETRY_ACK)
 	{
 	    closeConnection();
@@ -354,10 +378,9 @@ void handleTimeout()
 
 	else
 	{
-     	    clearWindow();
 	    sendAckNak();
-	    /* resend ack/nak */
-	    retryCounter ++;
+     	    clearWindow();
+	    state = WAIT_RESPONSE;
 	}
 	break;
 	
@@ -438,7 +461,8 @@ void closeConnection()
     /* destroy connection */
     free(currentConnection);
     fclose(currentFileHandle);
-    close(connectionSocketFD);
+    currentFileHandle = NULL;
+    close(connectionSocketFD);    
     state = IDLE;
 }
 
@@ -453,10 +477,11 @@ int processDataPacket(packet * sentPacket, int numBytes)
 
     startOfWindow = window_min_seq;    
 
+    /*
     if (debug == 1)
       printf("Window starts at seq_num = %d, size = %d\n",
 	     startOfWindow, numBytes);
-      
+    */
     
     /* check if packet is in window */
     if ( (sentPacket->header.seq_num < window_min_seq) ||
@@ -470,9 +495,10 @@ int processDataPacket(packet * sentPacket, int numBytes)
     /*  packet is in window */
     else
     {
-	/* update state if needed */
+	/* update state and retry ack/nak counter if needed */
 	if (state != RECV_DATA){
 	    state = RECV_DATA;
+	    retryCounter = 0;
 	}
 
 	/* load packet */

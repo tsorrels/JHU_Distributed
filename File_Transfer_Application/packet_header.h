@@ -24,7 +24,8 @@ typedef enum {
 typedef enum {
     IDLE,
     WAITING_DATA, /* waiting for first data packet */
-    RECV_DATA /* waiting for subsequent data packets */
+    RECV_DATA, /* waiting for subsequent data packets */
+    WAIT_RESPONSE /* wait for data following ack/nak */
 } receiver_state_type;
 
 
@@ -79,7 +80,7 @@ typedef struct connection_type{
 /* receiver timer values in microseconds*/
 const uint recv_window_timer = 200000;
 const uint recv_go_timer = 500000;
-const uint recv_data_timer = 100000;
+const uint recv_data_timer = 5000000;
 
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 100000;
