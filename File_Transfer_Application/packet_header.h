@@ -1,7 +1,7 @@
 
 #include "net_include.h"
 
-#define WINDOW_SIZE 10
+#define WINDOW_SIZE 200
 /* #define PAYLOAD_SIZE 1390 */
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 
