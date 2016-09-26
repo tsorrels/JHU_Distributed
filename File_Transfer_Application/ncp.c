@@ -282,9 +282,9 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             diff = diffTime(end,start);
             printf("Total time taken for transfer = %lf seconds\n",(diff.tv_sec+(diff.tv_usec)/1000000.0));
             printf("Total Mbytes transferred = %lf\n",(total_bytes*100.0)/HUN_MB);
-            fclose(f);
             if(hasfreed==0){
                 printf("Entering to free the buffers\n");
+                fclose(f);
                 for(i=0;i<WINDOW_SIZE;i++){
                     free(packets[i]);
                 }
