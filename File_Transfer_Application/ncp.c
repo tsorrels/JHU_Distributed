@@ -151,6 +151,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     while(1){
         if((hasnacks==1)||(ack<(last_seq-1))){
             if(hasnacks==1){
+                prev_seq = (payload->naks)[0];
                 if(debug==1)
                     printf("Resending NAKS\n");
                 for(k=0;k<(payload->num_nak);k++){
