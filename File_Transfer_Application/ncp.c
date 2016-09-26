@@ -28,6 +28,25 @@ ack_packet * check(uint timer);
 void sender(int lossRate, char * s_filename, char * d_filename);
 void establish_conn(char *filename);
 
+struct timeval diffTime(struct timeval left, struct timeval right)
+{
+    struct timeval diff;
+
+    diff.tv_sec  = left.tv_sec - right.tv_sec;
+    diff.tv_usec = left.tv_usec - right.tv_usec;
+
+    if (diff.tv_usec < 0) {
+        diff.tv_usec += 1000000;
+        diff.tv_sec--;
+    }
+
+    if (diff.tv_sec < 0) {
+        printf("WARNING: diffTime has negative result, returning 0!\n");
+        diff.tv_sec = diff.tv_usec = 0;
+    }
+
+    return diff;
+}
 
 int main(int argc, char ** argv)
 {
@@ -39,6 +58,7 @@ int main(int argc, char ** argv)
     struct sockaddr_in    name;
     struct hostent        *p_h_ent;
     struct hostent        h_ent;
+    
     debug = 1;
     if(debug==1)
         printf("Starting sender\n");
@@ -108,7 +128,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     int start_seq;
     int prev_seq;
     int hasnacks;
-    int sent_fin;
+    int sent_fin,max_value=0;
     int                   size[WINDOW_SIZE],recvd[WINDOW_SIZE];
     char                  **buffer;
     packet                *packets[WINDOW_SIZE];
@@ -117,6 +137,9 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     uint                  timer;
     FILE *f;    
     int total,begin,new_start;
+    long total_bytes = 0,last_hun=0;
+    struct timeval diff,now,end,start,hun;
+    double time;
 
 
     timer=sender_data_timer;    
@@ -149,9 +172,12 @@ void sender(int lossRate, char *s_filename, char *d_filename)
         printf("Establishing connection\n");
     establish_conn(d_filename);
     total=WINDOW_SIZE;
+    gettimeofday(&start, NULL);
+    last_hun = 0;
+    gettimeofday(&hun, NULL);
     while(1){
         if(hasnacks==1){
-            for(int k=start_seq;k<(start_seq+WINDOW_SIZE);k++){
+            for(int k=start_seq;k<(max_value);k++){
                 if(recvd[k%WINDOW_SIZE]==0){
                     sendto_dbg( ss, (char *)packets[k%WINDOW_SIZE], sizeof(packet_header)+size[k%WINDOW_SIZE], 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
@@ -166,7 +192,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             if(begin==0)
                 last_seq = 0;
             else
-                last_seq = start_seq + WINDOW_SIZE;
+                last_seq = max_value;
             if(debug==1)
                     printf("Reading %d packets, starting from = %d\n",(new_start-start_seq),last_seq);
             for(j=0;j<total;j++){
@@ -189,6 +215,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                     sendto_dbg( ss, (char *)packets[(last_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(last_seq+i)%WINDOW_SIZE], 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
                 }
+                max_value = last_seq + j;
                 timer = sender_data_timer;
                 if(begin > 0)
                 start_seq = new_start;
@@ -211,7 +238,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
         if(payload == NULL){
             resend = 1;
             
-            for(int k=start_seq;k<(start_seq+WINDOW_SIZE);k++){
+            for(int k=start_seq;k<(max_value);k++){
                 recvd[k%WINDOW_SIZE] = 0;
                 hasnacks = 1;
             }
@@ -231,7 +258,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 if(k==0)
                     new_start = (payload->naks)[k];
             }
-            for(int k=ack+1;k<(start_seq+WINDOW_SIZE);k++){
+            for(int k=ack+1;k<(max_value);k++){
                 recvd[k%WINDOW_SIZE]=0;
                 hasnacks=1;
                 if(payload->num_nak==0){
@@ -239,9 +266,9 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                         new_start = k;
                 }                
             }
-            if((payload->num_nak==0)&&(ack==(start_seq+WINDOW_SIZE-1))){
+            if((payload->num_nak==0)&&(ack==(max_value-1))){
                 hasnacks=0;
-                new_start = start_seq + WINDOW_SIZE;
+                new_start = max_value;
             }
             if(debug==1)
                 printf("Received ACK/NACK packet with ACK = %d and num_nak = %d and new_start = %d\n",ack,(payload->num_nak),new_start);
