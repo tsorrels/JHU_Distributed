@@ -11,6 +11,7 @@
 
 #include "packet_header.h"
 #include "sendto_dbg.h"
+#include <math.h>
 
 #define NAME_LENGTH 80
 
@@ -25,6 +26,11 @@ int fileCounter;
 int connectionSocketFD;
 int retryCounter;
 int debug;
+struct timeval timeval1;
+struct timeval timeval2;
+int totalBytesWritten = 0;
+int intervalBytesWritten = 0;
+int statSizeInterval;
 
 
 void closeConnection();
@@ -32,7 +38,50 @@ void initializeWindowBuffer();
 void sendResponsePacket();
 void handleTimeout();
 void sendAckNak();
+struct timeval diffTime(struct timeval left, struct timeval right);
 
+
+
+void checkStatistics(){
+
+    struct timeval diff;
+    double time;
+    
+    if (intervalBytesWritten >= statSizeInterval){
+        gettimeofday(&timeval2, NULL);
+	diff = diffTime(timeval1, timeval2);
+	time = diff.tv_sec + (diff.tv_usec) / 1000000.0;	
+	printf("Total bytes received: %d\n", totalBytesWritten);
+	printf("Average transfer rate of last 100MB = %d Mbits/s\n",
+	       (800/time));
+	       
+	intervalBytesWritten = 0;
+
+	gettimeofday(&timeval1, NULL);
+
+  }
+}
+
+
+struct timeval diffTime(struct timeval left, struct timeval right)
+{
+    struct timeval diff;
+
+    diff.tv_sec  = left.tv_sec - right.tv_sec;
+    diff.tv_usec = left.tv_usec - right.tv_usec;
+
+    if (diff.tv_usec < 0) {
+      diff.tv_usec += 1000000;
+      diff.tv_sec--;
+    }
+
+    if (diff.tv_sec < 0) {
+      printf("WARNING: diffTime has negative result, returning 0!\n");
+      diff.tv_sec = diff.tv_usec = 0;
+    }
+
+    return diff;
+}
 
 
 
@@ -47,12 +96,13 @@ void initializeWindowBuffer()
     int i;
     /* create window buffer */
     window_buffer = malloc(WINDOW_SIZE * sizeof(packet_buffer));
-    /* initialize buffer */
+        /* initialize buffer */
     for( i = 0 ; i < WINDOW_SIZE ; i ++)
     {
 	window_buffer[i].received = 0;
 	window_buffer[i].seq_num = i;
 	/* omit initializing buffer for data */
+
     }  
 
     window_min_seq = 0;
@@ -83,7 +133,7 @@ ack_packet * buildAckNak()
     }
 
     if (debug == 1)
-      printf("loop 1 ran, highest received index = %d\n", highestRecIndex);
+      printf("highest received index = %d\n", highestRecIndex);
 
     
     /* check for anamoly */
@@ -93,8 +143,6 @@ ack_packet * buildAckNak()
     }
      
     /* traverse, determine naks */
-
-
     
     
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
@@ -119,12 +167,20 @@ ack_packet * buildAckNak()
     payload->num_nak = numNak;    
     */
 
-    ackPacket->ack = highestSeqNum;
+
+    if (highestSeqNum != -1){
+      ackPacket->ack = highestSeqNum;
+    }
+    else{
+      ackPacket->ack = window_min_seq - 1;
+    }
+    
     ackPacket->num_nak = numNak;
-        
+
+    /*
     if (debug == 1)
       printf("about to run memcpy, numNak = %d\n", numNak);
-
+    */
     /*
     printf("nakArray is at %p\n", nakArray);
     printf("nakArray is at %d\n", nakArray[0]);
@@ -149,10 +205,10 @@ ack_packet * buildAckNak()
 void clearWindow()
 {
     int i;
-    int j;
+    //int j;
     int consecutiveSeqNum = -1;
     int consecutiveIndex = -1;
-    int highestIndex = -1;
+    //int highestIndex = -1;
     int highestSeqNum = -1;
     int numBytesWritten;
     int min_seq_index = -1;
@@ -166,7 +222,7 @@ void clearWindow()
 	if (window_buffer[i].received == 1 &&
 	   (window_buffer[i].seq_num > highestSeqNum) ){
 	    highestSeqNum = window_buffer[i].seq_num;
-	    highestIndex = i;
+	    //highestIndex = i;
 	}
     }
 
@@ -214,6 +270,8 @@ void clearWindow()
 					 window_buffer[i].length,
 					 currentFileHandle);
 
+		totalBytesWritten += numBytesWritten;
+		intervalBytesWritten += numBytesWritten;
 		/*
 		if (debug == 1)
 		printf("Wrote %d bytes\n", numBytesWritten); */
@@ -262,12 +320,15 @@ void clearWindow()
     if (debug == 1)
 	printf("Sliding base of window to seq_num %d\n", 
 	    window_min_seq);
+
+    checkStatistics();
+
 }
 
 
 void sendAckNak()
 {
-    int sizePacket;
+  //int sizePacket;
     int sizePayload;
     int i;
 /*
@@ -299,8 +360,8 @@ void sendAckNak()
 
     
     /* send packet */
-    sendto_dbg( connectionSocketFD, packet, sizeof(ack_packet), 0, 
-	    (struct sockaddr *)&(currentConnection->socket_address), 
+    sendto_dbg( connectionSocketFD, (const char*) packet, sizeof(ack_packet),
+		0, (struct sockaddr *)&(currentConnection->socket_address), 
 	    sizeof(currentConnection->socket_address) );
 
     free(packet);
@@ -339,7 +400,8 @@ void sendResponsePacket(packet_type type, struct sockaddr_in sendSockAddr)
     toAddress.sin_port = htons(PORT);
     
     /* send wait, address to whoever sent original packet */
-    sendto_dbg(sendingSocketTemp, response_packet, sizeof(packet_header), 0, 
+    sendto_dbg(sendingSocketTemp, (const char* )response_packet,
+	       sizeof(packet_header), 0, 
 	   (struct sockaddr *)&toAddress, sizeof(toAddress));
 	
     /* close temporary socket */
@@ -429,7 +491,9 @@ void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
     (currentConnection) = malloc(sizeof(connection));
     (currentConnection)->socket_address = toAddress;
     (currentConnection)->status = 1;
+    gettimeofday( &(currentConnection->startTime), NULL);
 
+    
     /* create sender socket */
     connectionSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
     if (connectionSocketFD<0) {
@@ -451,10 +515,21 @@ void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
 
 void closeConnection()
 {
+    struct timeval now;
+    struct timeval diff;
+    double time;
     if (debug == 1)
 	printf("closing connection\n");
 
 
+    gettimeofday(&now, NULL);
+    diff = diffTime(currentConnection->startTime, now);
+
+    time = diff.tv_sec + (diff.tv_usec) / 1000000.0;	
+
+    
+    printf("Transfered %d MB in %d seconds\n", totalBytesWritten, time);
+    
     /* finish writing file */
     clearWindow();
 
@@ -547,7 +622,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     //packet * wait_packet;
     //packet_type * type;
     int timer = 10; /* 10 usec default */
-    int bufferFull = 0;
+    //int bufferFull = 0;
 
     if (debug == 1)
 	printf("received packet type %d seq %d\n", sentPacket->header.type,
@@ -593,7 +668,7 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
 	}
 	else if (sentPacket->header.type == DATA)
 	{
-	    bufferFull = processDataPacket(sentPacket, numBytes);
+	    processDataPacket(sentPacket, numBytes);
 	    /* maybe set timer here */
 	    timer = recv_window_timer;
 	}
@@ -633,8 +708,8 @@ int main (int argc, char** argv)
     //char                  host_name[NAME_LENGTH] = {'\0'};
     //char                  my_name[NAME_LENGTH] = {'\0'};
     //int                   host_num;
-    int                   from_ip;
-    int                   ss,sr;
+    //int                   from_ip;
+    int                   sr;
     fd_set                mask;
     fd_set                dummy_mask,temp_mask;
     int                   numBytes;
@@ -645,14 +720,14 @@ int main (int argc, char** argv)
 
     
     int lossRate = atoi(argv[1]);
-    int fileIterator;
-    int currentFD;
+    //int fileIterator;
+    //int currentFD;
 
     printf("Loss rate set to %d\n", lossRate);
 
     /* initialize */
     sendto_dbg_init(lossRate);
-    fileIterator = 1;
+    //fileIterator = 1;
     fileCounter = 0;
     connectionSocketFD = -1;
     retryCounter = 0;
@@ -660,7 +735,8 @@ int main (int argc, char** argv)
     currentFileHandle = NULL;
     state = IDLE;
     debug = 1;
-
+    statSizeInterval = (int) pow(2, 20);
+    
     /* set up receive socket */
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
     if (sr<0) {
@@ -711,7 +787,7 @@ int main (int argc, char** argv)
                           &from_len );
 		/* DO NOT NEED NULL BYTE 
 		   mess_buf[bytes] = 0; */
-                from_ip = from_addr.sin_addr.s_addr;
+                //from_ip = from_addr.sin_addr.s_addr;
 
 		/* process packet, return new timeout value */	
 		timeout.tv_usec = processPacket(mess_buf, numBytes, from_addr);

@@ -71,7 +71,7 @@ typedef struct ack_payload_type{
 typedef struct connection_type{
     struct sockaddr_in socket_address;
     int status; /* syn sent, sending data, finish, whatever */
-
+    struct timeval startTime;
 } connection;
 
 
@@ -80,7 +80,7 @@ typedef struct connection_type{
 /* receiver timer values in microseconds*/
 const uint recv_window_timer = 200000;
 const uint recv_go_timer = 500000;
-const uint recv_data_timer = 5000000;
+const uint recv_data_timer = 100000;
 
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 100000;
