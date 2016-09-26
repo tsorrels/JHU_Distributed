@@ -123,7 +123,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
 
     last_seq=0;
     start_seq=0;
-    //prev_seq=0;
+    prev_seq=0;
     hasnacks=0;
     sent_fin=0;
 
