@@ -109,23 +109,24 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     int prev_seq;
     int hasnacks;
     int sent_fin;
-    int                   size[WINDOW_SIZE];
+    int                   size[WINDOW_SIZE],recvd[WINDOW_SIZE];
     char                  **buffer;
     packet                *packets[WINDOW_SIZE];
     //ack_packet            *rec;
     ack_packet           *payload;
     uint                  timer;
     FILE *f;    
-    int total;
+    int total,begin;
 
 
     timer=sender_data_timer;    
 
     last_seq=0;
     start_seq=0;
-    prev_seq=0;
+    new_start = WINDOW_SIZE;
     hasnacks=0;
     sent_fin=0;
+    begin = 0;
 
     resend=0;
     ack=WINDOW_SIZE-1;
@@ -149,103 +150,101 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     establish_conn(d_filename);
     total=WINDOW_SIZE;
     while(1){
-        if((hasnacks==1)||(ack<(last_seq-1))){
-            if(hasnacks==1){
-                prev_seq = (payload->naks)[0];
-                if(debug==1)
-                    printf("Resending NAKS\n");
-                for(k=0;k<(payload->num_nak);k++){
-                    if(debug==1)
-                    printf("Sending nack num=%d at index=%d\n",(payload->naks)[k],((payload->naks)[k])%WINDOW_SIZE);
-                    sendto_dbg( ss, (char *)packets[((payload->naks)[k])%WINDOW_SIZE], sizeof(packet_header)+size[((payload->naks)[k])%WINDOW_SIZE], 0, 
+        if(hasnacks==1){
+            for(int k=start_seq;k<(start_seq+WINDOW_SIZE);k++){
+                if(recvd[k%WINDOW_SIZE]==0){
+                    sendto_dbg( ss, (char *)packets[k%WINDOW_SIZE], sizeof(packet_header)+size[k%WINDOW_SIZE], 0, 
                       (struct sockaddr *)&send_addr, sizeof(send_addr) );
-                }
-            }
-            if(ack<(last_seq-1)){
-                if(hasnacks==0)
-                    prev_seq = ack+1;
-                if(debug==1)
-                    printf("Resending packets after ACK\n");
-                for(k=ack+1;k<last_seq;k++){
                     if(debug==1)
-                    printf("Sending packets after ack num=%d at index=%d\n",k,(k)%WINDOW_SIZE);
-                    sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet_header)+size[(k)%WINDOW_SIZE], 0, 
-                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                    printf("Resending packet =%d at index=%d\n",k,k%WINDOW_SIZE);
                 }
             }
             timer = sender_data_timer;
         }
-        if(resend==0)
-            j=0;
-        if((resend == 0)&&((hasnacks==0)||(((payload->naks)[0])>start_seq))){
-            if(hasnacks==1){
-                if(debug==1)
-                printf("First nak = %d\n",(payload->naks)[0]);
-                total=(payload->naks)[0]-start_seq;
-                prev_seq = (payload->naks)[0];
-            }
+        if(start_seq<new_start){
+            total = new_start-start_seq;
+            if(begin==0)
+                last_seq = 0;
             else
-                total = ack - start_seq+1;
+                last_seq = start_seq + WINDOW_SIZE;
             if(debug==1)
-                    printf("Reading %d packets\n",total);
+                    printf("Reading %d packets, starting from = %d\n",(new_start-start_seq),last_seq);
             for(j=0;j<total;j++){
                 read = fread(buffer[(last_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
                 size[(last_seq+j)%WINDOW_SIZE]=read;
+                recvd[(last_seq+j)%WINDOW_SIZE] = 1;
                 if(read==0)
                     break;
             }
-        }
-        if(j>0){
-            if(debug==1)
-                    printf("Sending %d packets\n",j);
-            for(i=0;i<j;i++){
-                for(h=0;h<size[(last_seq+i)%WINDOW_SIZE];h++)
-                    packets[(last_seq+i)%WINDOW_SIZE]->data[h] = buffer[(last_seq+i)%WINDOW_SIZE][h];
+            if(j>0){
                 if(debug==1)
-                    printf("Sending sequence num=%d stored at index=%d\n",(i+last_seq),(last_seq+i)%WINDOW_SIZE);
-                packets[(last_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
-                packets[(last_seq+i)%WINDOW_SIZE]->header.type=DATA;
-                sendto_dbg( ss, (char *)packets[(last_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(last_seq+i)%WINDOW_SIZE], 0, 
-                  (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                        printf("Sending %d packets\n",j);
+                for(i=0;i<j;i++){
+                    for(h=0;h<size[(last_seq+i)%WINDOW_SIZE];h++)
+                        packets[(last_seq+i)%WINDOW_SIZE]->data[h] = buffer[(last_seq+i)%WINDOW_SIZE][h];
+                    if(debug==1)
+                        printf("Sending sequence num=%d stored at index=%d\n",(i+last_seq),(last_seq+i)%WINDOW_SIZE);
+                    packets[(last_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
+                    packets[(last_seq+i)%WINDOW_SIZE]->header.type=DATA;
+                    sendto_dbg( ss, (char *)packets[(last_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(last_seq+i)%WINDOW_SIZE], 0, 
+                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                }
+                timer = sender_data_timer;
+                if(begin > 0)
+                start_seq = new_start;
+                begin++;
+                if(debug==1){
+                    printf("Start_seq = %d\n",start_seq);
+                }
             }
-            timer = sender_data_timer;
-        }
-        else if((read<=0)&&(hasnacks==0)&&(ack==(last_seq-1))){
-            if(debug==1)
-                    printf("Sending FIN packet\n");
-            packets[0]->header.type=FIN;
-            sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
-                  (struct sockaddr *)&send_addr, sizeof(send_addr) );
-            sent_fin =1;
-            timer = sender_fin_timeout;
+            else if((read<=0)&&(hasnacks==0)){
+                if(debug==1)
+                        printf("Sending FIN packet\n");
+                packets[0]->header.type=FIN;
+                sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
+                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                sent_fin =1;
+                timer = sender_fin_timeout;
+            }
         }
         payload = check(timer);
         if(payload == NULL){
             resend = 1;
+            
+            for(int k=start_seq;k<(start_seq+WINDOW_SIZE);k++){
+                recvd[k%WINDOW_SIZE] = 0;
+                hasnacks = 1;
+            }
+            new_start = start_seq;
             if(debug==1)
-                printf("Resending the last window\n");
+                printf("Resending the last window, new_start = %d\n",new_start);
             continue;
         }
         if(payload->header.type == ACK){
             //payload = (ack_payload *)rec->data;
             resend=0;
             //prev_seq = start_seq;
-            if(hasnacks==1)
-                start_seq = prev_seq;
-            else
-                start_seq = last_seq;
-            last_seq += i;
-            printf("Start seq = %d, last seq = %d, prev_seq = %d\n",start_seq,last_seq,prev_seq);
-            i=0;
             ack = payload->ack;
-            if((payload->num_nak)>0){
-                hasnacks = 1;
-                printf("Nack[0] = %d, num_nak=%d\n",(payload->naks)[0],(payload->num_nak));
+            for(int k=0;k<num_nak;k++){
+                recvd[((payload->naks)[k])%WINDOW_SIZE]=0;
+                hasnacks=1;
+                if(k==0)
+                    new_start = (payload->naks)[k];
             }
-            else
-                hasnacks = 0;
+            for(int k=ack+1;k<(start_seq+WINDOW_SIZE);k++){
+                recvd[k%WINDOW_SIZE]=0;
+                hasnacks=1;
+                if(num_nak==0){
+                    if(k==(ack+1))
+                        new_start = k;
+                }                
+            }
+            if((num_nak==0)&&(ack==(start_seq+WINDOW_SIZE-1))){
+                hasnacks=0;
+                new_start = start_seq + WINDOW_SIZE;
+            }
             if(debug==1)
-                printf("Received ACK/NACK packet with ACK = %d and num_nak = %d\n",ack,(payload->num_nak));
+                printf("Received ACK/NACK packet with ACK = %d and num_nak = %d and new_start = %d\n",ack,(payload->num_nak),new_start);
         }
         else if(payload->header.type == FINACK){
             if(debug==1)
