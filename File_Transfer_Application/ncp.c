@@ -116,7 +116,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     ack_packet           *payload;
     uint                  timer;
     FILE *f;    
-    int total,begin;
+    int total,begin,new_start;
 
 
     timer=sender_data_timer;    
@@ -220,12 +220,12 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 printf("Resending the last window, new_start = %d\n",new_start);
             continue;
         }
-        if(payload->header.type == ACK){
+        else if(payload->header.type == ACK){
             //payload = (ack_payload *)rec->data;
             resend=0;
             //prev_seq = start_seq;
             ack = payload->ack;
-            for(int k=0;k<num_nak;k++){
+            for(int k=0;k<payload->num_nak;k++){
                 recvd[((payload->naks)[k])%WINDOW_SIZE]=0;
                 hasnacks=1;
                 if(k==0)
@@ -234,12 +234,12 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             for(int k=ack+1;k<(start_seq+WINDOW_SIZE);k++){
                 recvd[k%WINDOW_SIZE]=0;
                 hasnacks=1;
-                if(num_nak==0){
+                if(payload->num_nak==0){
                     if(k==(ack+1))
                         new_start = k;
                 }                
             }
-            if((num_nak==0)&&(ack==(start_seq+WINDOW_SIZE-1))){
+            if((payload->num_nak==0)&&(ack==(start_seq+WINDOW_SIZE-1))){
                 hasnacks=0;
                 new_start = start_seq + WINDOW_SIZE;
             }
@@ -260,6 +260,9 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             else{
                 sender(lossRate,s_filename,d_filename);
             }
+        }
+        else{
+            printf("Something wrong with the receiver!!!!!!");
         }
     }
 }
