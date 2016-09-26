@@ -59,7 +59,7 @@ int main(int argc, char ** argv)
     struct hostent        *p_h_ent;
     struct hostent        h_ent;
     
-    debug = 1;
+    debug = 0;
     if(debug==1)
         printf("Starting sender\n");
 
@@ -123,16 +123,14 @@ int main(int argc, char ** argv)
 }
 void sender(int lossRate, char *s_filename, char *d_filename)
 {
-    int                   i,j,k,h,read,resend,ack;
+    int                   i,j,h,read,ack;
     int                   last_seq;
     int start_seq;
-    int prev_seq;
     int hasnacks;
     int sent_fin,max_value=0;
     int                   size[WINDOW_SIZE],recvd[WINDOW_SIZE];
     char                  **buffer;
     packet                *packets[WINDOW_SIZE];
-    //ack_packet            *rec;
     ack_packet           *payload;
     uint                  timer;
     FILE *f;    
@@ -150,14 +148,11 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     hasnacks=0;
     sent_fin=0;
     begin = 0;
-
-    resend=0;
     ack=WINDOW_SIZE-1;
 
 
     if(debug==1)
         printf("Entered sender\n");
-    //gethostname(my_name, NAME_LENGTH);
     
     f = fopen(s_filename,"r");
     buffer = (char **)malloc(sizeof(char *)*WINDOW_SIZE);
@@ -176,6 +171,18 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     last_hun = 0;
     gettimeofday(&hun, NULL);
     while(1){
+        if(begin!=0){
+            total_bytes = (new_start-1)*PAYLOAD_SIZE;
+            if((total_bytes-last_hun)>=HUN_MB){
+                printf("Total Mbytes transferred till now = %lf\n",(total_bytes*100.0)/HUN_MB);
+                gettimeofday(&now,NULL);
+                diff = diffTime(now,hun);
+                time = diff.tv_sec+ (diff.tv_usec)/1000000.0;
+                printf("Average transfer rate of last 100 Mbytes = %lfMbits/sec\n",(800/time));
+                hun = now;
+                last_hun = total_bytes;
+            }
+        }
         if(hasnacks==1){
             for(int k=start_seq;k<(max_value);k++){
                 if(recvd[k%WINDOW_SIZE]==0){
@@ -235,9 +242,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             }
         }
         payload = check(timer);
-        if(payload == NULL){
-            resend = 1;
-            
+        if(payload == NULL){            
             for(int k=start_seq;k<(max_value);k++){
                 recvd[k%WINDOW_SIZE] = 0;
                 hasnacks = 1;
@@ -248,9 +253,6 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             continue;
         }
         else if(payload->header.type == ACK){
-            //payload = (ack_payload *)rec->data;
-            resend=0;
-            //prev_seq = start_seq;
             ack = payload->ack;
             for(int k=0;k<payload->num_nak;k++){
                 recvd[((payload->naks)[k])%WINDOW_SIZE]=0;
@@ -276,6 +278,10 @@ void sender(int lossRate, char *s_filename, char *d_filename)
         else if(payload->header.type == FINACK){
             if(debug==1)
                 printf("Received FINACK, FIN status = %d\n",sent_fin);
+            gettimeofday(&end, NULL);
+            diff = diffTime(end,start);
+            printf("Total time taken for transfer = %lf seconds\n",(diff.tv_sec+(diff.tv_usec)/1000000.0));
+            printf("Total Mbytes transferred = %lf\n",(total_bytes*100.0)/HUN_MB);
             fclose(f);
             for(i=0;i<WINDOW_SIZE;i++){
                 free(packets[i]);
@@ -296,8 +302,8 @@ void sender(int lossRate, char *s_filename, char *d_filename)
 void establish_conn(char *filename){
     while(1){
         packet *start;
-	ack_packet * rec;
-	start =malloc(sizeof(packet));
+        ack_packet * rec;
+        start =malloc(sizeof(packet));
         start->header.type=SYN;
         strcpy(start->data, filename);
         sendto_dbg( ss, (char *)start, sizeof(packet), 0, 
@@ -335,7 +341,6 @@ ack_packet * check(uint timer){
     while(1){
         temp_mask = mask;
         timeout.tv_sec = 0;
-        //TODO
         timeout.tv_usec = timer;
         num = select( FD_SETSIZE, &temp_mask, &dummy_mask, &dummy_mask, &timeout);
         if (num > 0) {
@@ -344,11 +349,7 @@ ack_packet * check(uint timer){
                     recvfrom( sr, mess_buf, MAX_MESS_LEN, 0,  
                               (struct sockaddr *)&from_addr, 
                               &from_len );
-                    //mess_buf[bytes] = 0;
                     from_ip = from_addr.sin_addr.s_addr;
-                    ack_packet *p=(ack_packet *)mess_buf;                    
-                    //if(debug==1)
-                    //    printf("Received packet host_num=%d, from_ip=%d, ack=%d, num_nak=%d,naks[0]=%d\n",host_num,from_ip,p->ack,p->num_nak,p->naks[0]);
                     if(host_num == from_ip){
                         if(debug==1)
                         printf("Received packet from correct receiver\n");
