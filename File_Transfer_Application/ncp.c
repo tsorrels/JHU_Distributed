@@ -187,8 +187,8 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             if(debug==1)
                     printf("Reading %d packets\n",total);
             for(j=0;j<total;j++){
-                read = fread(buffer[(start_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
-                size[(start_seq+j)%WINDOW_SIZE]=read;
+                read = fread(buffer[(last_seq+j)%WINDOW_SIZE],1,PAYLOAD_SIZE,f);
+                size[(last_seq+j)%WINDOW_SIZE]=read;
                 if(read==0)
                     break;
             }
@@ -197,13 +197,13 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             if(debug==1)
                     printf("Sending %d packets\n",j);
             for(i=0;i<j;i++){
-                for(h=0;h<size[(start_seq+i)%WINDOW_SIZE];h++)
-                    packets[(start_seq+i)%WINDOW_SIZE]->data[h] = buffer[(start_seq+i)%WINDOW_SIZE][h];
+                for(h=0;h<size[(last_seq+i)%WINDOW_SIZE];h++)
+                    packets[(last_seq+i)%WINDOW_SIZE]->data[h] = buffer[(last_seq+i)%WINDOW_SIZE][h];
                 if(debug==1)
-                    printf("Sending sequence num=%d stored at index=%d\n",(i+last_seq),(start_seq+i)%WINDOW_SIZE);
-                packets[(start_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
-                packets[(start_seq+i)%WINDOW_SIZE]->header.type=DATA;
-                sendto_dbg( ss, (char *)packets[(start_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(start_seq+i)%WINDOW_SIZE], 0, 
+                    printf("Sending sequence num=%d stored at index=%d\n",(i+last_seq),(last_seq+i)%WINDOW_SIZE);
+                packets[(last_seq+i)%WINDOW_SIZE]->header.seq_num=i+last_seq;
+                packets[(last_seq+i)%WINDOW_SIZE]->header.type=DATA;
+                sendto_dbg( ss, (char *)packets[(last_seq+i)%WINDOW_SIZE], sizeof(packet_header)+size[(last_seq+i)%WINDOW_SIZE], 0, 
                   (struct sockaddr *)&send_addr, sizeof(send_addr) );
             }
             timer = sender_data_timer;
