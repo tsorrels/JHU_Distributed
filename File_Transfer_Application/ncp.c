@@ -123,7 +123,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
 
     last_seq=0;
     start_seq=0;
-    prev_seq=0;
+    //prev_seq=0;
     hasnacks=0;
     sent_fin=0;
 
@@ -149,14 +149,40 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     establish_conn(d_filename);
     total=WINDOW_SIZE;
     while(1){
-        if((resend == 0)&&((hasnacks==0)||(((payload->naks)[0])>prev_seq))){
+        if((hasnacks==1)||(ack<(last_seq-1))){
+            if(hasnacks==1){
+                if(debug==1)
+                    printf("Resending NAKS\n");
+                for(k=0;k<(payload->num_nak);k++){
+                    if(debug==1)
+                    printf("Sending nack num=%d\n",(payload->naks)[k]);
+                    sendto_dbg( ss, (char *)packets[((payload->naks)[k])%WINDOW_SIZE], sizeof(packet_header)+size[((payload->naks)[k])%WINDOW_SIZE], 0, 
+                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                }
+            }
+            if(ack<(last_seq-1)){
+                if(debug==1)
+                    printf("Resending packets after ACK\n");
+                for(k=ack+1;k<last_seq;k++){
+                    if(debug==1)
+                    printf("Sending packets after ack num=%d\n",k);
+                    sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet_header)+size[(k)%WINDOW_SIZE], 0, 
+                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                }
+            }
+            timer = sender_data_timer;
+        }
+        if(resend==0)
+            j=0;
+        if((resend == 0)&&((hasnacks==0)||(((payload->naks)[0])>start_seq))){
             if(hasnacks==1){
                 if(debug==1)
                 printf("First nak = %d\n",(payload->naks)[0]);
-                total=(payload->naks)[0]-prev_seq;
+                total=(payload->naks)[0]-start_seq;
+                prev_seq = (payload->naks)[0];
             }
             else
-                total = ack+1;
+                total = ack - start_seq+1;
             if(debug==1)
                     printf("Reading %d packets\n",total);
             for(j=0;j<total;j++){
@@ -190,29 +216,6 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             sent_fin =1;
             timer = sender_fin_timeout;
         }
-        if((hasnacks==1)||(ack<(last_seq-1))){
-            if(hasnacks==1){
-                if(debug==1)
-                    printf("Resending NAKS\n");
-                for(k=0;k<(payload->num_nak);k++){
-                    if(debug==1)
-                    printf("Sending nack num=%d\n",(payload->naks)[k]);
-                    sendto_dbg( ss, (char *)packets[((payload->naks)[k])%WINDOW_SIZE], sizeof(packet_header)+size[((payload->naks)[k])%WINDOW_SIZE], 0, 
-                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
-                }
-            }
-            if(ack<(last_seq-1)){
-                if(debug==1)
-                    printf("Resending packets after ACK\n");
-                for(k=ack+1;k<last_seq;k++){
-                    if(debug==1)
-                    printf("Sending packets after ack num=%d\n",k);
-                    sendto_dbg( ss, (char *)packets[(k)%WINDOW_SIZE], sizeof(packet_header)+size[(k)%WINDOW_SIZE], 0, 
-                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
-                }
-            }
-            timer = sender_data_timer;
-        }
         payload = check(timer);
         if(payload == NULL){
             resend = 1;
@@ -223,9 +226,13 @@ void sender(int lossRate, char *s_filename, char *d_filename)
         if(payload->header.type == ACK){
             //payload = (ack_payload *)rec->data;
             resend=0;
-            prev_seq = start_seq;
-            start_seq = last_seq;
+            //prev_seq = start_seq;
+            if(hasnacks==1)
+                start_seq = prev_seq;
+            else
+                start_seq = last_seq;
             last_seq += i;
+            printf("Start seq = %d, last seq = %d, prev_seq = %d\n",start_seq,last_seq,prev_seq);
             i=0;
             ack = payload->ack;
             if((payload->num_nak)>0){
@@ -308,8 +315,8 @@ ack_packet * check(uint timer){
                     //mess_buf[bytes] = 0;
                     from_ip = from_addr.sin_addr.s_addr;
                     ack_packet *p=(ack_packet *)mess_buf;                    
-                    if(debug==1)
-                        printf("Received packet host_num=%d, from_ip=%d, ack=%d, num_nak=%d,naks[0]=%d\n",host_num,from_ip,p->ack,p->num_nak,p->naks[0]);
+                    //if(debug==1)
+                    //    printf("Received packet host_num=%d, from_ip=%d, ack=%d, num_nak=%d,naks[0]=%d\n",host_num,from_ip,p->ack,p->num_nak,p->naks[0]);
                     if(host_num == from_ip){
                         if(debug==1)
                         printf("Received packet from correct receiver\n");
