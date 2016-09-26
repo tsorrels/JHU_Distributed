@@ -1,6 +1,26 @@
 #include "packet_header.h"
 #define NAME_LENGTH 80
 
+struct timeval diffTime(struct timeval left, struct timeval right)
+{
+    struct timeval diff;
+
+    diff.tv_sec  = left.tv_sec - right.tv_sec;
+    diff.tv_usec = left.tv_usec - right.tv_usec;
+
+    if (diff.tv_usec < 0) {
+        diff.tv_usec += 1000000;
+        diff.tv_sec--;
+    }
+
+    if (diff.tv_sec < 0) {
+        printf("WARNING: diffTime has negative result, returning 0!\n");
+        diff.tv_sec = diff.tv_usec = 0;
+    }
+
+    return diff;
+}
+
 int main(int argc,char *argv[])
 {
     struct sockaddr_in host;
@@ -16,6 +36,9 @@ int main(int argc,char *argv[])
     char * d_filename;
     FILE *f;
     int i=0,bytes;
+    long total = 0,last_hun=0;
+    struct timeval diff,now,end,start,hun;
+    double time;
     //int lossRate;
     
     s_filename = malloc(NAME_LENGTH);
@@ -65,24 +88,49 @@ int main(int argc,char *argv[])
             *(neto_mess_ptr+k) = *(d_filename+k);
             }
             mess_len = strlen(d_filename) + sizeof(mess_len);
+        }
+        else{
+            bytes = fread(neto_mess_ptr,1,PAYLOAD_SIZE,f);
+            if(bytes==0){
+                free(mess_buf);
+                gettimeofday(&end, NULL);
+                diff = diffTime(end,start);
+                printf("Total time taken for transfer = %lf seconds\n",(diff.tv_sec+(diff.tv_usec)/1000000.0));
+                printf("Total Mbytes transferred = %lf\n",(total*100.0)/HUN_MB);
+                break;
+            }
+            mess_len = bytes + sizeof(mess_len);
+        }
+        memcpy( mess_buf, &mess_len, sizeof(mess_len) );
+        ret = 0;
+        while(ret < mess_len)
+            ret += send( s, mess_buf+ret, mess_len-ret, 0);
+        //printf("mess_len = %d, ret = %d\n",mess_len,ret);
+        if(i==0){
+            gettimeofday(&start, NULL);
+            last_hun = 0;
+            gettimeofday(&hun, NULL);
             i++;
         }
         else{
-        bytes = fread(neto_mess_ptr,1,PAYLOAD_SIZE,f);
-        if(bytes==0){
-            free(mess_buf);
-            break;
+            total += bytes;
+            last_hun += bytes;
+            if(last_hun>=HUN_MB){
+                printf("Total Mbytes transferred till now = %lf\n",(total*100.0)/HUN_MB);
+                gettimeofday(&now,NULL);
+                diff = diffTime(now,hun);
+                time = diff.tv_sec+ (diff.tv_usec)/1000000.0;
+                printf("Average transfer rate of last 100 Mbytes = %lfMbits/sec\n",(800/time));
+                hun = now;
+                last_hun -= HUN_MB;
+            }
         }
-        mess_len = bytes + sizeof(mess_len);
-        }
-        memcpy( mess_buf, &mess_len, sizeof(mess_len) );
-        ret = send( s, mess_buf, mess_len, 0);
-        if(ret != mess_len) 
+        /*if(ret != mess_len) 
         {
             free(mess_buf);
             perror( "Net_client: error in writing");
             exit(1);
-        }
+        }*/
         free(mess_buf);
     }
 

@@ -7,6 +7,7 @@
 
 #define RECV_NUM_RETRY_ACK 5
 #define NUM_INTERMITENT_ACK 1
+#define HUN_MB 104857600
 
 
 typedef enum {
