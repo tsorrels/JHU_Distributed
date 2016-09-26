@@ -162,6 +162,8 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 }
             }
             if(ack<(last_seq-1)){
+                if(hasnacks==0)
+                    prev_seq = ack+1;
                 if(debug==1)
                     printf("Resending packets after ACK\n");
                 for(k=ack+1;k<last_seq;k++){
