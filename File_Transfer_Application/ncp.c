@@ -171,7 +171,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     last_hun = 0;
     gettimeofday(&hun, NULL);
     while(1){
-        if(begin!=0){
+        if((sent_fin!=1)&&(begin!=0)&&(new_start>0)){
             total_bytes = (new_start-1)*PAYLOAD_SIZE;
             if((total_bytes-last_hun)>=HUN_MB){
                 printf("Total Mbytes transferred till now = %lf\n",(total_bytes*100.0)/HUN_MB);
@@ -194,7 +194,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             }
             timer = sender_data_timer;
         }
-        if(start_seq<new_start){
+        if((sent_fin!=1)&&(start_seq<new_start)){
             total = new_start-start_seq;
             if(begin==0)
                 last_seq = 0;
@@ -242,7 +242,17 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             }
         }
         payload = check(timer);
-        if(payload == NULL){            
+        if(payload == NULL){
+            if(sent_fin==1){
+                hasnacks=0;
+                if(debug==1)
+                        printf("Sending FIN packet\n");
+                packets[0]->header.type=FIN;
+                sendto_dbg( ss,(char *)packets[0], sizeof(packet), 0, 
+                      (struct sockaddr *)&send_addr, sizeof(send_addr) );
+                timer = sender_fin_timeout;
+                continue;
+            }
             for(int k=start_seq;k<(max_value);k++){
                 recvd[k%WINDOW_SIZE] = 0;
                 hasnacks = 1;
