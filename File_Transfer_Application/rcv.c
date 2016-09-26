@@ -558,7 +558,8 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     if(sentPacket->header.type == FIN)
     {
 	/* check state and if there is a connection */
-	if ( (state == RECV_DATA || state == WAITING_DATA) &&
+	if ( (state == RECV_DATA || state == WAITING_DATA ||
+	      state == WAIT_RESPONSE) &&
 	     currentConnection != NULL) {
 	    /* check if the FIN is coming from current connection */
 	    if (currentConnection->socket_address.sin_addr.s_addr == 
