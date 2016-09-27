@@ -304,7 +304,7 @@ void sender(int lossRate, char *s_filename, char *d_filename)
             }
             if(sent_fin==1){
                 printf("Exiting");
-                break;
+                return;
             }
             else{
                 sender(lossRate,s_filename,d_filename);
