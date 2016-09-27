@@ -59,7 +59,7 @@ int main(int argc, char ** argv)
     struct hostent        *p_h_ent;
     struct hostent        h_ent;
     
-    debug = 1;
+    debug = 0;
     if(debug==1)
         printf("Starting sender\n");
 
