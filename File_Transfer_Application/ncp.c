@@ -59,7 +59,7 @@ int main(int argc, char ** argv)
     struct hostent        *p_h_ent;
     struct hostent        h_ent;
     
-    debug = 0;
+    debug = 1;
     if(debug==1)
         printf("Starting sender\n");
 
@@ -314,7 +314,8 @@ void sender(int lossRate, char *s_filename, char *d_filename)
     }
 }
 void establish_conn(char *filename){
-    while(1){
+    for(;;){
+        printf("Pinging receiver\n");
         packet *start;
         ack_packet * rec;
         start =malloc(sizeof(packet));
@@ -328,17 +329,22 @@ void establish_conn(char *filename){
         if(rec == NULL){
             if(debug==1)
                 printf("Sender timed out.\n");
+            free(start);
             continue;
         }
         else if(rec->header.type == WAIT){
             printf("Receiver is busy, will retry after some time.\n");
+            free(start);
             sleep(sender_wait_timer);
+            continue;
         }
-        else if(rec->header.type == GO)
+        else if(rec->header.type == GO){
             if(debug == 1)
                 printf("Received Go!\n");
+            free(start);
             return;
-    }    
+        }
+    }  
 }
 
 ack_packet * check(uint timer){

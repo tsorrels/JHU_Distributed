@@ -85,5 +85,5 @@ const uint recv_data_timer = 1000;
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 100000;
 const uint sender_syn_timer = 100000;
-const uint sender_wait_timer = 500000;
+const uint sender_wait_timer = 10;
 const uint sender_data_timer = 5000000;
