@@ -160,12 +160,6 @@ ack_packet * buildAckNak()
     
     ackPacket = malloc(sizeof(ack_packet));
     ackPacket->header.type = ACK;
-    /*
-    payload = (ack_payload *) (ackPacket->data);
-    payload->ack = highestSeqNum;
-    payload->num_nak = numNak;    
-    */
-
 
     if (highestSeqNum != -1){
       ackPacket->ack = highestSeqNum;
@@ -176,17 +170,6 @@ ack_packet * buildAckNak()
     
     ackPacket->num_nak = numNak;
 
-    /*
-    if (debug == 1)
-      printf("about to run memcpy, numNak = %d\n", numNak);
-    */
-    /*
-    printf("nakArray is at %p\n", nakArray);
-    printf("nakArray is at %d\n", nakArray[0]);
-    printf("payload pointer is poiting to %p\n", payload);
-    printf("packet pointer is pointing to %p\n", ackPacket);
-    printf("payload naks is pointing to %p\n", payload->naks);
-    */    
 
 
     qsort(nakArray, numNak, sizeof(int), cmpfunc);
@@ -206,7 +189,7 @@ void clearWindow()
     int i;
     //int j;
     int consecutiveSeqNum = -1;
-    int consecutiveIndex = -1;
+    //int consecutiveIndex = -1;
     //int highestIndex = -1;
     int highestSeqNum = -1;
     int numBytesWritten;
@@ -225,22 +208,6 @@ void clearWindow()
 	}
     }
 
-    /* traverse, find highest seq_num */
-    /*
-    i = window_min_seq;
-    j = WINDOW_SIZE - 1;
-    if (i == 0){
-        j = i - 1;
-    }
-    while (i != (j -1) ){
-	if (window_buffer[i].received == 1 &&
-	   (window_buffer[i].seq_num > highestSeqNum) ){
-	    highestSeqNum = window_buffer[i].seq_num;
-	    highestIndex = i;
-	}
-	i = (i + 1) % WINDOW_SIZE;
-    }
-    */
     if (debug == 1)
 	printf("Highest sequence number in window = %d\n", highestSeqNum);
 
@@ -257,7 +224,7 @@ void clearWindow()
 		consecutiveSeqNum = window_buffer[i].seq_num;
 
 		/* track index of highest consecutive packet */
-		consecutiveIndex = i;
+		//consecutiveIndex = i;
 
 		if (debug == 1)
 		    printf("Writing packet with seq_num %d from index %d\n",
@@ -271,9 +238,6 @@ void clearWindow()
 
 		totalBytesWritten += numBytesWritten;
 		intervalBytesWritten += numBytesWritten;
-		/*
-		if (debug == 1)
-		printf("Wrote %d bytes\n", numBytesWritten); */
 		
 		/* mark packet window as empty */
 		window_buffer[i].received = 0;
@@ -304,17 +268,6 @@ void clearWindow()
         window_min_seq = consecutiveSeqNum + 1;
 	window_max_seq = window_min_seq + WINDOW_SIZE - 1;
     }
-    /*
-    min_seq_index = window_min_seq % WINDOW_SIZE;
-    max_seq_index = (min_seq_index + WINDOW_SIZE - 1) % WINDOW_SIZE;
-    */
-   
-    for (i = window_min_seq ; i <= consecutiveIndex ; i ++)
-    {
-        /*
-	window_buffer[i].seq_num += WINDOW_SIZE;
-	window_buffer[i].seq_num += 1;*/
-    } 
 
     if (debug == 1)
 	printf("Sliding base of window to seq_num %d\n", 
@@ -327,25 +280,10 @@ void clearWindow()
 
 void sendAckNak()
 {
-  //int sizePacket;
-  //int sizePayload;
     int i;
-/*
-    ack_payload * payloadPointer;
-    
-    packet * ackPacket = buildAckNak(); 
-    */
 
     ack_packet * packet = buildAckNak();
     
-    /* determine size of payload 
-    payloadPointer = (ack_payload *)  (ackPacket->data);
-    sizePayload = payloadPointer->num_nak * sizeof(int) + sizeof(int)
-      + sizeof(int);
-    
-    sizePacket = sizePayload + sizeof(packet_header);
-
-    */
 
     if (debug == 1){
 	printf("Sending ack = %d, num_nak = %d\n", packet->ack,
@@ -473,10 +411,6 @@ void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
         printf("Preparing to receive %s\n",
 	    fileName);
 
-    /*
-    if (fileCounter > 99){
-	perror("ERROR: cannot write to more than 99 files; require restart\n");
-	} */
 
     /* check whether a connection exists */
     if (currentConnection != NULL){
@@ -542,10 +476,6 @@ void closeConnection()
 
     
     /* destroy connection */
-    /*
-    window_min_seq = 0;
-    window_max_seq= WINDOW_SIZE - 1;
-    */
     free(window_buffer);
     free(currentConnection);
     currentConnection = NULL;
@@ -560,18 +490,8 @@ void closeConnection()
 /* return 1 if this filled the buffer */
 int processDataPacket(packet * sentPacket, int numBytes)
 {
-    /* does what happen in processing the data packet dictate what happens with timer? */
-    //int startOfWindow;     
     int windowIndex;
     int bufferFilled = 0;
-
-    //startOfWindow = window_min_seq;    
-
-    /*
-    if (debug == 1)
-      printf("Window starts at seq_num = %d, size = %d\n",
-	     startOfWindow, numBytes);
-    */
     
     /* check if packet is in window */
     if ( (sentPacket->header.seq_num < window_min_seq) ||
@@ -617,10 +537,6 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	window_buffer[windowIndex].length = numBytes - sizeof(packet_header);
 
 
-	/* ack nak */
-	/*
-	if (( windowIndex % (WINDOW_SIZE / NUM_INTERMITENT_ACK) == 0) &&
-	windowIndex != 0 ) */
 
 	if (sentPacket->header.seq_num == window_max_seq)
 	{
@@ -634,17 +550,9 @@ int processDataPacket(packet * sentPacket, int numBytes)
 
 int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr)
 {
-    //struct timeval        timeout;
-
-    //fd_set                mask;
-    //fd_set                dummy_mask,temp_mask;
 
     packet * sentPacket = (packet *)mess_buf;
-    //int sendingSocketTemp;
-    //packet * wait_packet;
-    //packet_type * type;
     int timer = 10; /* 10 usec default */
-    //int bufferFull = 0;
 
     if (debug == 1)
 	printf("received packet type %d seq %d\n", sentPacket->header.type,
@@ -718,42 +626,30 @@ int main (int argc, char** argv)
     /* socket declarations */
 
     struct sockaddr_in    name;    
-    //struct sockaddr_in    send_addr;
     struct sockaddr_in    from_addr;
     socklen_t             from_len;
-    //struct hostent        h_ent;
-    //struct hostent        *p_h_ent;
-    //char                  host_name[NAME_LENGTH] = {'\0'};
-    //char                  my_name[NAME_LENGTH] = {'\0'};
-    //int                   host_num;
-    //int                   from_ip;
     int                   sr;
     fd_set                mask;
     fd_set                dummy_mask,temp_mask;
     int                   numBytes;
     int                   num;
     char                  mess_buf[MAX_MESS_LEN];
-    //char                  input_buf[80];
     struct timeval        timeout;
 
     
     int lossRate = atoi(argv[1]);
-    //int fileIterator;
-    //int currentFD;
-
     printf("Loss rate set to %d\n", lossRate);
 
     /* initialize */
     sendto_dbg_init(lossRate);
-    //fileIterator = 1;
     fileCounter = 0;
     connectionSocketFD = -1;
     retryCounter = 0;
     initializeWindowBuffer();
     currentFileHandle = NULL;
     state = IDLE;
-    debug = 1 ;
-    statSizeInterval = (int) pow(2, 20);
+    debug = 0 ;
+    statSizeInterval = HUN_MB;
     
     /* set up receive socket */
     sr = socket(AF_INET, SOCK_DGRAM, 0);  /* socket for receiving (udp) */
@@ -771,14 +667,6 @@ int main (int argc, char** argv)
 	perror("Ucast: bind");
 	exit(1);
     }
-
- 
-    /* build sender socket */
-    /*
-    send_addr.sin_family = AF_INET;
-    send_addr.sin_addr.s_addr = host_num; 
-    send_addr.sin_port = htons(PORT);
-    */
     
     FD_ZERO( &mask );
     FD_ZERO( &dummy_mask );
@@ -803,32 +691,10 @@ int main (int argc, char** argv)
                 numBytes = recvfrom( sr, mess_buf, MAX_MESS_LEN, 0,  
                           (struct sockaddr *)&from_addr, 
                           &from_len );
-		/* DO NOT NEED NULL BYTE 
-		   mess_buf[bytes] = 0; */
-                //from_ip = from_addr.sin_addr.s_addr;
-
 		/* process packet, return new timeout value */	
 		timeout.tv_usec = processPacket(mess_buf, numBytes, from_addr);
 
-/*
-                printf( "Received from (%d.%d.%d.%d): %s\n", 
-                                (htonl(from_ip) & 0xff000000)>>24,
-                                (htonl(from_ip) & 0x00ff0000)>>16,
-                                (htonl(from_ip) & 0x0000ff00)>>8,
-                                (htonl(from_ip) & 0x000000ff),
-                                mess_buf );
-
-*/
             }
-
-	    /* REMOVE STDIN FROM EVENT FD IN EVENT LOOP 
-	    else if( FD_ISSET(0, &temp_mask) ) {
-                bytes = read( 0, input_buf, sizeof(input_buf) );
-                input_buf[bytes] = 0;
-                printf( "There is an input: %s\n", input_buf );
-                sendto( ss, input_buf, strlen(input_buf), 0, 
-                    (struct sockaddr *)&send_addr, sizeof(send_addr) );
- 		    }*/
         } 
 	else 
 	{ /* timer fired */
@@ -841,14 +707,5 @@ int main (int argc, char** argv)
         }	
     }
 
-
-    /* set up sending socket */ 
-/*
-    ss = socket(AF_INET, SOCK_DGRAM, 0);
-    if (ss<0) {
-	perror("Ucast: socket");
-	exit(1);
-    }
-  */  
     return 0;
 }
