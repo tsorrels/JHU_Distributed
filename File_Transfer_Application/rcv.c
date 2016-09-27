@@ -752,7 +752,7 @@ int main (int argc, char** argv)
     initializeWindowBuffer();
     currentFileHandle = NULL;
     state = IDLE;
-    debug = 1 ;
+    debug = 0 ;
     statSizeInterval = (int) pow(2, 20);
     
     /* set up receive socket */
