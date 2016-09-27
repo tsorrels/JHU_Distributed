@@ -1,7 +1,7 @@
 
 #include "net_include.h"
 
-#define WINDOW_SIZE 200
+#define WINDOW_SIZE 340
 /* #define PAYLOAD_SIZE 1390 */
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 
@@ -78,15 +78,12 @@ typedef struct connection_type{
 
 
 /* receiver timer values in microseconds*/
-const uint recv_window_timer = 200000;
-const uint recv_go_timer = 500000;
-const uint recv_data_timer = 100000;
+const uint recv_window_timer = 2000;
+const uint recv_go_timer = 5000;
+const uint recv_data_timer = 1000;
 
 /* sender timer values in microseconds*/
 const uint sender_fin_timeout = 100000;
 const uint sender_syn_timer = 100000;
 const uint sender_wait_timer = 500000;
 const uint sender_data_timer = 5000000;
-
-
-

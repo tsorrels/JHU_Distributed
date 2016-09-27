@@ -49,16 +49,15 @@ void checkStatistics(){
     
     if (intervalBytesWritten >= statSizeInterval){
         gettimeofday(&timeval2, NULL);
-	diff = diffTime(timeval1, timeval2);
+	diff = diffTime(timeval2, timeval1);
 	time = diff.tv_sec + (diff.tv_usec) / 1000000.0;	
 	printf("Total bytes received: %d\n", totalBytesWritten);
-	printf("Average transfer rate of last 100MB = %d Mbits/s\n",
+	printf("Average transfer rate of last 100MB = %f Mbits/s\n",
 	       (800/time));
 	       
 	intervalBytesWritten = 0;
 
 	gettimeofday(&timeval1, NULL);
-
   }
 }
 
@@ -115,7 +114,7 @@ ack_packet * buildAckNak()
     int numNak = 0;
     int nakArray [WINDOW_SIZE];
     ack_packet * ackPacket;
-    int consecutiveSeqNum = -1;
+    //int consecutiveSeqNum = -1;
     int highestSeqNum = -1;
     int highestRecIndex = -1;
 
@@ -137,9 +136,9 @@ ack_packet * buildAckNak()
 
     
     /* check for anamoly */
-    if (highestSeqNum == -1)
+    if (highestSeqNum == -1 && debug == 1)
     {
-	perror("ERROR: buildAckNak did not find packet in winwdow\n");
+	perror("ATTN: buildAckNak did not find packet in winwdow\n");
     }
      
     /* traverse, determine naks */
@@ -329,7 +328,7 @@ void clearWindow()
 void sendAckNak()
 {
   //int sizePacket;
-    int sizePayload;
+  //int sizePayload;
     int i;
 /*
     ack_payload * payloadPointer;
@@ -457,6 +456,8 @@ void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
     struct sockaddr_in toAddress;
     char * fileName;
 
+    initializeWindowBuffer();
+    
     fileCounter ++;
 
     if (debug ==1 )
@@ -492,7 +493,9 @@ void createNewConnection(packet * sentPacket, struct sockaddr_in sendSockAddr)
     (currentConnection)->socket_address = toAddress;
     (currentConnection)->status = 1;
     gettimeofday( &(currentConnection->startTime), NULL);
+    totalBytesWritten = 0;
 
+    
     
     /* create sender socket */
     connectionSocketFD = socket(AF_INET, SOCK_DGRAM, 0);
@@ -523,22 +526,34 @@ void closeConnection()
 
 
     gettimeofday(&now, NULL);
-    diff = diffTime(currentConnection->startTime, now);
+    diff = diffTime(now, currentConnection->startTime);
 
     time = diff.tv_sec + (diff.tv_usec) / 1000000.0;	
 
     
-    printf("Transfered %d MB in %d seconds\n", totalBytesWritten, time);
     
     /* finish writing file */
     clearWindow();
 
+    printf("Transfered %f MB in %f seconds\n",
+	   (totalBytesWritten * 100.0 / HUN_MB ), time);
+    printf("Transfered %d MB in %f seconds\n",
+	   (totalBytesWritten ), time);
+
+    
     /* destroy connection */
+    /*
+    window_min_seq = 0;
+    window_max_seq= WINDOW_SIZE - 1;
+    */
+    free(window_buffer);
     free(currentConnection);
+    currentConnection = NULL;
     fclose(currentFileHandle);
     currentFileHandle = NULL;
     close(connectionSocketFD);    
     state = IDLE;
+    totalBytesWritten = 0;
 }
 
 
@@ -546,11 +561,11 @@ void closeConnection()
 int processDataPacket(packet * sentPacket, int numBytes)
 {
     /* does what happen in processing the data packet dictate what happens with timer? */
-    int startOfWindow;     
+    //int startOfWindow;     
     int windowIndex;
     int bufferFilled = 0;
 
-    startOfWindow = window_min_seq;    
+    //startOfWindow = window_min_seq;    
 
     /*
     if (debug == 1)
@@ -570,7 +585,13 @@ int processDataPacket(packet * sentPacket, int numBytes)
     /*  packet is in window */
     else
     {
-	/* update state and retry ack/nak counter if needed */
+        if (state == WAITING_DATA){
+    	    /* this is the first data packet */
+	    gettimeofday(&timeval1, NULL);
+	}
+
+	/* update state and reset ack/nak counter if needed */
+
 	if (state != RECV_DATA){
 	    state = RECV_DATA;
 	    retryCounter = 0;
@@ -579,9 +600,10 @@ int processDataPacket(packet * sentPacket, int numBytes)
 	/* load packet */
 	windowIndex = sentPacket->header.seq_num % WINDOW_SIZE;
 	/* just double check the seq_num lines up with expected */
-	if (window_buffer[windowIndex].seq_num != sentPacket->header.seq_num)
+	if (window_buffer[windowIndex].seq_num != sentPacket->header.seq_num&&
+	    debug ==1)
 	{
-	    perror("ERROR:data packet not being loaded correctly in window\n");
+	    printf("ATTN:data packet not being loaded correctly in window\n");
 	}
 
 	if (debug == 1)
@@ -658,20 +680,16 @@ int processPacket(char * mess_buf, int numBytes, struct sockaddr_in sendSockAddr
     }
 
     /* check if this is the active connection */
-    else if ( currentConnection->socket_address.sin_addr.s_addr == 
-	      sendSockAddr.sin_addr.s_addr){
-	if (sentPacket->header.type == SYN && state == WAITING_DATA)
-	{
-	    /* something is a little out of synch, just resend GO */
-	    sendResponsePacket(GO, sendSockAddr); 
-	    timer = recv_data_timer;
-	}
-	else if (sentPacket->header.type == DATA)
-	{
-	    processDataPacket(sentPacket, numBytes);
-	    /* maybe set timer here */
-	    timer = recv_window_timer;
-	}
+    else if ( currentConnection != NULL){
+      if ( currentConnection->socket_address.sin_addr.s_addr == 
+	   sendSockAddr.sin_addr.s_addr){
+	  if (sentPacket->header.type == DATA)
+	  {
+	      processDataPacket(sentPacket, numBytes);
+	      /* maybe set timer here */
+	      timer = recv_window_timer;
+	  }
+      }
     }
 
     /* if this is not active connection, and packet is data type */
@@ -734,7 +752,7 @@ int main (int argc, char** argv)
     initializeWindowBuffer();
     currentFileHandle = NULL;
     state = IDLE;
-    debug = 1;
+    debug = 1 ;
     statSizeInterval = (int) pow(2, 20);
     
     /* set up receive socket */
