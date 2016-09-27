@@ -303,8 +303,8 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 printf("Successfully freed the buffers\n");
             }
             if(sent_fin==1){
-                printf("Exiting");
-                return;
+                printf("Exiting\n");
+                exit(0);
             }
             else{
                 sender(lossRate,s_filename,d_filename);
