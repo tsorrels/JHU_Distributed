@@ -300,8 +300,10 @@ void sender(int lossRate, char *s_filename, char *d_filename)
                 }
                 free(buffer);
                 hasfreed = 1;
+                printf("Successfully freed the buffers\n");
             }
             if(sent_fin==1){
+                printf("Exiting");
                 break;
             }
             else{
