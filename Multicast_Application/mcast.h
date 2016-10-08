@@ -2,13 +2,18 @@
 #define WINDOW_SIZE 340
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 340
-
+#define SEND_WINDOW_SIZE 100
 
 
 typedef enum {
     DATA,
     TOKEN
 } packet_type;
+
+typedef enum {
+    WAITING_START, 
+    CLOSING
+} process_state_type;
 
 
 typedef struct packet_header_type {
@@ -41,8 +46,14 @@ typedef struct packet_buffer_type{
 } packet_buffer;
 
 
-typedef struct window_type {
+typedef struct sender_window_type {
+    int window_start;
+    int window_end;
+    packet_buffer packets [SEND_WINDOW_SIZE];
+} sender_window;
+
+typedef struct gloal_window_type {
     int window_start;
     int window_end;
     packet_buffer packets [WINDOW_SIZE];
-} window;
+} global_window;
