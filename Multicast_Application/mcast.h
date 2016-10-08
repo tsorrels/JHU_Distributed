@@ -20,6 +20,7 @@ typedef struct packet_header_type {
     int seq_num;
     int rand_num;
     int proc_num;
+    packet_type type;
 } packet_header;
 
 

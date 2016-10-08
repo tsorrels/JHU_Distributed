@@ -10,6 +10,18 @@ int debug;
 process_state_type processState;
 
 
+int numPacketsToSend;
+int machineIndex;
+int numProcesses;
+int lossRate;
+
+void printDebug(char* message){
+    if (debug){
+	printf("%s\n", message);
+    }	
+}
+
+
 void initializeGlobalWindow(){
 
 }
@@ -18,15 +30,133 @@ void initializeSenderWindow(){
 
 }
 
+
+/* check to see if packet is in window, return 1 for true */
+int packetInWindow(packet * recvdPacket){
+
+
+    return 0;
+}
+
+/* places packet into global window */ 
+void receivePacket(packet * recvdPacket){
+
+}
+ 
+
+
+void slideGlobalWindow(){
+
+}
+
+
+void clearGlobalWindow(){
+
+    // check condition
+
+    // deliver data
+
+    slideGlobalWindow();    
+}
+
+void resendNaks(packet * recvdPacket){
+
+}
+
+
+void sendPackets(){
+    
+}
+
+void craftPackets(){
+
+}
+
+void buildToken(){
+
+}
+
+void sendToken(){
+
+}
+
+
+/* this method does a LOT,  but the idea is to add a bunch of 
+   functionality in this one method and then just be able to 
+   change the entry point into the function; this minimizes
+   rewriting stuff when we swtich token operations to unicast */
+void processToken(packet * recvdPacket){
+
+    resendNaks(recvdPacket);
+
+    slideGlobalWindow(recvdPacket);
+
+    sendPackets();
+    
+    //deliver data
+
+    craftPackets();
+
+    buildToken();
+
+    sendToken();
+
+}
+
 /* only called when state is waiting for start packet */
-int processStartPacket(char * messageBuffer){
+int processStartPacket(char * messageBuffer, int numBytes){
 
     
     return 0;
 }
 
+
+void processDataPacket(packet * recvdPacket){
+    if (packetInWindow(recvdPacket)){
+	receivePacket(recvdPacket);
+
+    }
+    else{
+	printDebug("received data packet outside of window");
+    }
+}
+ 
+
 /* returnes what value of timer will be in next select call */
-int processPacket(char * messageBuffer){
+int processPacket(char * messageBuffer, int numBytes){
+    packet * recvdPacket;
+    int timerValue;
+    int clearWindow;
+
+    clearWindow = 0; /* not sure how we will set this, prolly with a funccal */
+    timerValue = 10; /* default of resetting timer to 10usec */
+    recvdPacket = (packet*)messageBuffer;
+    
+    if(recvdPacket->header.type == DATA){
+	printDebug("Received data packet from mcast socket");
+
+	processDataPacket(recvdPacket);
+
+	clearGlobalWindow();
+
+    }
+
+    else if(recvdPacket->header.type == TOKEN){
+	printDebug("Received token packet from mcast socket");
+
+	/* this method does a LOT,  but the idea is to add a bunch of 
+	   functionality in this one method and then just be able to 
+	   change the entry point into the function; this minimizes
+	   rewriting stuff when we swtich token operations to unicast */
+	processToken(recvdPacket);
+
+    }
+
+
+    else{
+	printDebug("Received non- packet from mcast socket");
+
+    }
 
     
     return 0;
@@ -59,19 +189,32 @@ int main (int argc, char ** argv)
 
     int startMessageReceived; // indicates whether processes recvd start message
 
-    /* initialize */
+    /* INITIALIZE */
+    if (argc < 5){
+	printf("usage: ./mcast <num_of_packets> <machine_index> ");
+	printf("<num_of_machines> <loss_rate>\n ");
+	exit(0);
+    }
+    numPacketsToSend = atoi(argv[1]);
+    machineIndex = atoi(argv[2]);
+    numProcesses = atoi(argv[3]);
+    lossRate = atoi(argv[4]);
+    if (argc == 6){
+	if (atoi(argv[5]) == 1){
+	    debug = 1;
+	    printDebug("dubug set");
+	}
+    }   
     initializeGlobalWindow();
     initializeSenderWindow();
     startMessageReceived = 0;
+
+    /* hard coded multicast address */
     mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
     debug = 0;
     processState = WAITING_START;
-    if (argc > 5){
-	if (atoi(argv[5]) == 1){
-	    //set debug
-	    debug = 1;
-	}
-    }
+    /* END INITIALIZE */
+
 
     /******* BEGIN SET UP MCAST RECEIVE SOCKET ********/
     sockRecvMcast = socket(AF_INET, SOCK_DGRAM, 0);
@@ -127,12 +270,11 @@ int main (int argc, char ** argv)
     FD_SET( sockRecvMcast, &mask );
 
 
-    if (debug)
-	printf("starting loop to wait for start message\n");
+    printf("Waiting to receive start message\n");
     /* WAIT FOR START MESSAGE */
     for (;;)
     {
-        timeout.tv_sec = 10;
+        timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
 	temp_mask = mask;
@@ -144,7 +286,8 @@ int main (int argc, char ** argv)
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
 
-		startMessageReceived = processStartPacket(mess_buf);
+		startMessageReceived = processStartPacket(mess_buf, 
+							  numBytesRead);
 		if (startMessageReceived == 1){
 		    break;
 		}
@@ -157,8 +300,7 @@ int main (int argc, char ** argv)
 	}
     }
 
-    if (debug)
-	printf("Received start message, continuing to event loop");
+    printDebug("Received start message, continuing to event loop");
 
 
     /* MAIN EVENT LOOP */
@@ -175,7 +317,7 @@ int main (int argc, char ** argv)
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
 
-		timeout.tv_usec = processPacket(mess_buf);
+		timeout.tv_usec = processPacket(mess_buf, numBytesRead);
 	    }
 	}
 
