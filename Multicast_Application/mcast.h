@@ -7,7 +7,8 @@
 
 typedef enum {
     DATA,
-    TOKEN
+    TOKEN,
+    START
 } packet_type;
 
 typedef enum {
