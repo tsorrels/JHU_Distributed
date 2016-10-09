@@ -5,12 +5,12 @@ int main (int argc, char ** argv)
 {
     struct sockaddr_in send_addr; // send address struct
     int                mcast_addr; // mcast address
-    struct ip_mreq     mreq; //multicast required stuct
     unsigned char      ttl_val; // TTL to ensure packets stay in network
     int                sockSendMcast; // send MCast socket
     packet *           startPacket; // start packet send to mcast addr
 
     /******* BEGIN SET UP MCAST SEND SOCKET ********/
+    mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
     sockSendMcast = socket(AF_INET, SOCK_DGRAM, 0); /* Socket for sending */
     if (sockSendMcast < 0) {
         perror("Mcast: socket");
