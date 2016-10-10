@@ -282,7 +282,10 @@ int main (int argc, char ** argv)
 			      &dummy_mask, &timeout);
 
         if (numReadyFDs > 0) {
+
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
+		printDebug("Received data");
+
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
 
