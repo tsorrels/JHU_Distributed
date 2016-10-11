@@ -1,9 +1,11 @@
 #include "mcast.h"
-#include "net_include.h"
+//#include "net_include.h"
 #include "sendto_dbg.h"
 
 
 /* global variables, accessable throughout program */
+connection mcastConnection;
+
 sender_window senderWindow;
 global_window globalWindow;
 int debug;
@@ -11,7 +13,7 @@ process_state_type processState;
 
 
 int numPacketsToSend;
-int machineIndex;
+int machineIndex; 
 int numProcesses;
 int lossRate;
 
@@ -23,10 +25,22 @@ void printDebug(char* message){
 
 
 void initializeGlobalWindow(){
-
+    int i;
+    globalWindow.window_start = 0;
+    globalWindow.window_end = WINDOW_SIZE;
+    for (i = 0 ; i < WINDOW_SIZE ; i ++){
+        globalWindow.packets[i].received = 0;
+	globalWindow.packets[i].size = -1;
+	globalWindow.packets[i].seq_num = i;      
+    }
+    globalWindow.previous_ack = -1;
 }
 
 void initializeSenderWindow(){
+  //int i;
+    senderWindow.window_start = 0;
+    senderWindow.window_end = 0;
+    senderWindow.num_built_packets = 0;
 
 }
 
@@ -40,7 +54,22 @@ int packetInWindow(packet * recvdPacket){
 
 /* places packet into global window */ 
 void receivePacket(packet * recvdPacket){
+  int seq_num;
 
+  seq_num = recvdPacket->header.seq_num;
+    // check to see if in window
+  if (seq_num < globalWindow.window_start ||
+      seq_num > globalWindow.window_end){
+    printDebug("received packet outside window");
+  }
+
+  else{
+    // copy packet into global window
+    memcpy(& globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes,
+	   recvdPacket, sizeof(packet));
+    globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
+
+  }
 }
  
 
@@ -63,17 +92,97 @@ void resendNaks(packet * recvdPacket){
 
 }
 
+/* pass in sequence number to stamp on packet, and send packet */
+void sendPacket(int seq_num){
 
-void sendPackets(){
+    // stamp sequence number
+    packet * sendingPacket;
+
+
+    if (debug)
+      printf("sending packet seq_num =  %d\n", seq_num);
     
+    sendingPacket = &(senderWindow.packets[senderWindow.window_start]);
+    sendingPacket->header.seq_num = seq_num;
+  
+    //send
+    sendto(mcastConnection.fd, sendingPacket, sizeof(packet), 0,
+	 (struct sockaddr*) &mcastConnection.send_addr,
+	   sizeof(mcastConnection.send_addr));
+
+    // load into global window
+    memcpy(&globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes,
+	   sendingPacket, sizeof(packet));
+    globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
+    //globalWindow.window_end ++;
+
+    
+    //clear buffer?
+    senderWindow.window_start = (senderWindow.window_start + 1)
+      % SEND_WINDOW_SIZE ;
+
+    
+
+    senderWindow.num_sent_packets ++;
 }
 
+/* takes ARU/cumulative ack from token 
+ * sends up to the group cumulative ack + MAX_MESSAGE */
+void sendPackets(int ack, int seq_num){
+    int i;
+    i = seq_num + 1;
+    while (
+	   //i <= (ack + WINDOW_SIZE) &&
+	   i <= globalWindow.window_end &&
+	   i <= seq_num + MAX_MESSAGE &&
+	   senderWindow.num_sent_packets <= senderWindow.num_built_packets){
+        sendPacket(i);
+	i ++;
+    }  
+}
+
+int newRandomNumber(){
+
+
+    return 1;
+}
+
+
+/* this method overwrites the passed address in the sender_window */
+void buildPacket(packet * packetAddress){
+    printDebug("building new packet");
+    packetAddress->header.proc_num = machineIndex;
+    packetAddress->header.seq_num = -1;
+    packetAddress->header.type = DATA;
+    packetAddress->header.rand_num = newRandomNumber();
+}
+
+/* loops through sender window and replenishes the window with new packets
+ * up to window_start + SEND_WINDOW_SIZE; does not run if this process
+ * has already built its prescribd number of packets */
 void craftPackets(){
 
+    do{
+        if (senderWindow.num_built_packets == numPacketsToSend){
+  	    printDebug("built max packets");
+	    break;
+	}
+	//newPacket = buildPacket()
+	buildPacket(&senderWindow.packets[senderWindow.num_built_packets %
+					 SEND_WINDOW_SIZE]);
+        senderWindow.window_end =
+	  (senderWindow.window_end + 1) % SEND_WINDOW_SIZE;
+	senderWindow.num_built_packets ++;
+    }
+    while (senderWindow.window_end != senderWindow.window_start +
+	   SEND_WINDOW_SIZE);
+  
 }
 
 void buildToken(){
+    
 
+  
 }
 
 void sendToken(){
@@ -91,7 +200,7 @@ void processToken(packet * recvdPacket){
 
     slideGlobalWindow(recvdPacket);
 
-    sendPackets();
+    sendPackets(0, 0);
     
     //deliver data
 
@@ -105,9 +214,21 @@ void processToken(packet * recvdPacket){
 
 /* only called when state is waiting for start packet */
 int processStartPacket(char * messageBuffer, int numBytes){
+    packet * packetPtr;
+    int returnValue;
+    
+    printDebug("Processing packet in processStartPacket");
+  
+    packetPtr = (packet*) messageBuffer;
+    returnValue = 0;
 
     
-    return 0;
+    
+    if (numBytes == sizeof(packet) && packetPtr->header.type == START){
+        returnValue = 1;
+    }
+
+    return returnValue;
 }
 
 
@@ -186,7 +307,8 @@ int main (int argc, char ** argv)
     int                numBytesRead; // used in calls to recv
     char               mess_buf[sizeof(packet)]; // buffer to receive packets
     struct timeval     timeout; // for even loop timeout
-
+    int                begin;
+    
     int startMessageReceived; // indicates whether processes recvd start message
 
     /* INITIALIZE */
@@ -208,10 +330,16 @@ int main (int argc, char ** argv)
     initializeGlobalWindow();
     initializeSenderWindow();
     startMessageReceived = 0;
-
+    begin = 0;
+    if(machineIndex == 1){
+        begin = 1;
+    }
+    
     /* hard coded multicast address */
-    mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
-    debug = 0;
+    //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
+    mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
+    
+    //debug = 0;
     processState = WAITING_START;
     /* END INITIALIZE */
 
@@ -269,6 +397,19 @@ int main (int argc, char ** argv)
     FD_ZERO( &dummy_mask );
     FD_SET( sockRecvMcast, &mask );
 
+    /* Prepare for execution */
+    if(machineIndex == 1){
+
+        //craft packets
+        //craft token
+    }
+    
+    else{
+        //craft packets
+    }
+
+
+    
 
     printf("Waiting to receive start message\n");
     /* WAIT FOR START MESSAGE */
@@ -279,7 +420,10 @@ int main (int argc, char ** argv)
 
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
-			      &dummy_mask, &timeout);
+			      &dummy_mask
+			      , &timeout
+			      //, NULL
+			      );
 
         if (numReadyFDs > 0) {
 
@@ -303,14 +447,28 @@ int main (int argc, char ** argv)
 	}
     }
 
+
     printDebug("Received start message, continuing to event loop");
 
+
+    if(machineIndex == 1){
+        
+        // send token
+    }
+
+    
 
     /* MAIN EVENT LOOP */
     timeout.tv_sec = 0;
     timeout.tv_usec = 10;
+
     for (;;)
     {
+        if(begin){
+  	    //send messages
+	    //send token
+	    begin = 0;
+	}
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
 			      &dummy_mask, &timeout);

@@ -1,8 +1,10 @@
+#include "net_include.h"
 
 #define WINDOW_SIZE 340
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 340
-#define SEND_WINDOW_SIZE 100
+#define SEND_WINDOW_SIZE 200
+#define MAX_MESSAGE 100
 
 
 typedef enum {
@@ -15,6 +17,12 @@ typedef enum {
     WAITING_START, 
     CLOSING
 } process_state_type;
+
+typedef struct connection_type{
+  int fd;
+  struct sockaddr send_addr;
+  
+} connection;
 
 
 typedef struct packet_header_type {
@@ -49,13 +57,17 @@ typedef struct packet_buffer_type{
 
 
 typedef struct sender_window_type {
-    int window_start;
-    int window_end;
-    packet_buffer packets [SEND_WINDOW_SIZE];
+    int window_start; /* index within packets;' */
+    int window_end; /* index within packets;' */
+  //packet_buffer packets [SEND_WINDOW_SIZE];
+    packet packets[SEND_WINDOW_SIZE];
+    int num_built_packets;
+    int num_sent_packets;
 } sender_window;
 
 typedef struct gloal_window_type {
-    int window_start;
-    int window_end;
+    int window_start; /* sequence number */
+    int window_end; /* sequence number */
     packet_buffer packets [WINDOW_SIZE];
+    int previous_ack;
 } global_window;

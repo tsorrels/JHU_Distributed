@@ -8,9 +8,12 @@ int main (int argc, char ** argv)
     unsigned char      ttl_val; // TTL to ensure packets stay in network
     int                sockSendMcast; // send MCast socket
     packet *           startPacket; // start packet send to mcast addr
-
+    int                numBytesSent;
+    
     /******* BEGIN SET UP MCAST SEND SOCKET ********/
-    mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
+    //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
+    mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
+    
     sockSendMcast = socket(AF_INET, SOCK_DGRAM, 0); /* Socket for sending */
     if (sockSendMcast < 0) {
         perror("Mcast: socket");
@@ -36,9 +39,14 @@ int main (int argc, char ** argv)
 
     printf("Sending start packet\n");
 
+    printf("size of pakcet is %d\n", sizeof(startPacket));
+    
     /* send start message to mcast address*/
-    sendto(sockSendMcast, startPacket, sizeof(startPacket), 0, 
+    numBytesSent = sendto(sockSendMcast, startPacket, sizeof(packet), 0, 
 	   (struct sockaddr *) &send_addr, sizeof(send_addr));
+
+
+        printf("sent %d bytes\n", numBytesSent);
 
     free(startPacket);
 
