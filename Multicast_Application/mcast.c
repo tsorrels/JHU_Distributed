@@ -34,6 +34,7 @@ void initializeGlobalWindow(){
 	globalWindow.packets[i].seq_num = i;      
     }
     globalWindow.previous_ack = -1;
+    globalWindow.has_lowered = 0;
 }
 
 void initializeSenderWindow(){
@@ -71,11 +72,29 @@ void receivePacket(packet * recvdPacket){
 
   }
 }
- 
 
 
-void slideGlobalWindow(){
+/* returns seq_num of highest consequtive seq_num in global window; returns
+ * -1 if it is empty */
+int getConsecutiveAck(){
 
+    int i;
+  
+    for (i = globalWindow.window_start ; i < globalWindow.window_end ; i ++){
+      if (globalWindow.packets[i % WINDOW_SIZE].received != 1){
+	break;
+      }      
+    }   
+    return i - 1;
+}
+
+
+void slideGlobalWindow(packet * token){
+
+  token_payload * tokenPayload = (token_payload *) token->data;
+
+  
+  
 }
 
 

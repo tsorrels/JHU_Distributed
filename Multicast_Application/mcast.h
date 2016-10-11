@@ -70,4 +70,5 @@ typedef struct gloal_window_type {
     int window_end; /* sequence number */
     packet_buffer packets [WINDOW_SIZE];
     int previous_ack;
+    int has_lowered;
 } global_window;
