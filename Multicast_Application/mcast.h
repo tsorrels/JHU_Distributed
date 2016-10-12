@@ -5,7 +5,7 @@
 #define MAX_NAK 340
 #define SEND_WINDOW_SIZE 200
 #define MAX_MESSAGE 100
-
+#define MAX_RAND 1000000
 
 typedef enum {
     DATA,

@@ -17,6 +17,15 @@ int machineIndex;
 int numProcesses;
 int lossRate;
 
+
+
+
+
+void sendPacket(int seq_num);
+
+
+
+
 void printDebug(char* message){
     if (debug){
 	printf("%s\n", message);
@@ -27,7 +36,7 @@ void printDebug(char* message){
 void initializeGlobalWindow(){
     int i;
     globalWindow.window_start = 0;
-    globalWindow.window_end = WINDOW_SIZE;
+    globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
         globalWindow.packets[i].received = 0;
 	globalWindow.packets[i].size = -1;
@@ -88,27 +97,95 @@ int getConsecutiveAck(){
     return i - 1;
 }
 
+int min (int left, int right){
+  if (left <= right){
+    return left;
+  }
+
+  else{
+    return right;
+  }
+}
+
+
+
+void deliverPacket(packet * deliveredPacket){
+
+  if(debug){
+    printf("%2d, %8d, %8d\n", deliveredPacket->header.proc_num,
+	   deliveredPacket->header.seq_num, 
+	   deliveredPacket->header.rand_num);
+
+  }
+}
+
+/* delivers packet in global buffer up min of the ack received on the token
+ * and the ack previously loaded on the token; returns the seq_num + 1 of
+ * the packets wrote, which is the new start of the global window */
+int clearGlobalWindow(int tokenAck){
+
+  int i;
+  int prevAck;
+
+  prevAck = min(globalWindow.previous_ack, tokenAck);
+
+  for (i = globalWindow.window_start ; i <= prevAck ; i ++){
+    deliverPacket(&globalWindow.packets[i].packet_bytes);
+    globalWindow.packets[i].received = 0;
+
+  }
+
+  return i;  
+}
+
 
 void slideGlobalWindow(packet * token){
 
-  token_payload * tokenPayload = (token_payload *) token->data;
+  int consecutiveAck;
+  token_payload * tokenPayload;
+  int clearedToSeqNum;
 
-  
-  
+  tokenPayload = (token_payload *) token->data;
+
+  /* clear window and deliver data */
+  clearedToSeqNum = clearGlobalWindow(tokenPayload->ack);
+
+  /* update window */
+  globalWindow.window_start = clearedToSeqNum;
+  globalWindow.window_end = globalWindow.window_start + WINDOW_SIZE - 1;
+  /* -1 because window_end identifies the packet with the highest 
+   * sequence number that will fit in the window */
+
+  //consecutiveAck = getConsecutiveAck();  
 }
 
-
-void clearGlobalWindow(){
-
-    // check condition
-
-    // deliver data
-
-    slideGlobalWindow();    
-}
 
 void resendNaks(packet * recvdPacket){
+  int i;
+  token_payload * payload;
+  int nackValue;
+  
+  payload = recvdPacket->data;
+  
+  for(i = 0 ; i < payload->num_nak ; i ++){
+    nackValue = payload->nak[i];
+    if(globalWindow.packets[nackValue % WINDOW_SIZE].received == 1){
+      sendPacket(nackValue);
+    }
+  }    
+}
 
+void resendNak(int seq_num){
+    packet * sendingPacket;
+
+    if (debug)
+      printf("resending nak %d\n", seq_num);
+    sendingPacket = &globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes;
+    
+    //send
+    sendto(mcastConnection.fd, sendingPacket, sizeof(packet), 0,
+	 (struct sockaddr*) &mcastConnection.send_addr,
+	   sizeof(mcastConnection.send_addr));
 }
 
 /* pass in sequence number to stamp on packet, and send packet */
@@ -140,14 +217,13 @@ void sendPacket(int seq_num){
     senderWindow.window_start = (senderWindow.window_start + 1)
       % SEND_WINDOW_SIZE ;
 
-    
-
     senderWindow.num_sent_packets ++;
 }
 
 /* takes ARU/cumulative ack from token 
- * sends up to the group cumulative ack + MAX_MESSAGE */
-void sendPackets(int ack, int seq_num){
+ * sends up to the group cumulative ack + MAX_MESSAGE 
+ * returns sequence number of last packet sent*/
+int sendPackets(int ack, int seq_num){
     int i;
     i = seq_num + 1;
     while (
@@ -157,13 +233,14 @@ void sendPackets(int ack, int seq_num){
 	   senderWindow.num_sent_packets <= senderWindow.num_built_packets){
         sendPacket(i);
 	i ++;
-    }  
+    }
+    return i -1;
 }
 
 int newRandomNumber(){
 
 
-    return 1;
+  return rand() % MAX_RAND + 1;
 }
 
 
@@ -198,14 +275,83 @@ void craftPackets(){
   
 }
 
-void buildToken(){
-    
+int getNewAck(int tokenAck, int seq_num){
 
-  
+  int consecutiveAck;
+  int newAck;
+
+  newAck = tokenAck;
+  consecutiveAck = getConsecutiveAck();
+
+  if (consecutiveAck < tokenAck){
+    //globalWindow.has_lowered = 1;
+    newAck = consecutiveAck;
+  }
+
+  else if (tokenAck == seq_num){
+    newAck = consecutiveAck;
+  }
+
+  else if (tokenAck == globalWindow.previous_ack){
+    newAck = consecutiveAck;    
+  }
+
+  else{
+    newAck = tokenAck;
+  }
+  /* else return tokenAck; do not update it */  
+  return newAck;
 }
 
-void sendToken(){
 
+/* this method loads the token payload with nacks; it does not re-hang the 
+ * nacks that it received on the token */
+void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
+{
+  int i;
+  int numNacks;
+
+  numNacks = 0;
+  
+  for (i = consecutiveAck + 1 ; i <= seqNum ; i ++){
+    if (globalWindow.packets[i].received != 1){
+      tokenPayload->nak[numNacks] = globalWindow.packets[i].seq_num;
+      numNacks ++;
+    }  
+  }
+  tokenPayload->num_nak = numNacks;
+}
+
+packet * buildToken(packet * token, int highestSeqNumSent){
+
+    token_payload * tokenPayload;
+    token_payload * newPayload;
+    packet * newToken;
+    int consecutiveAck;
+    
+    tokenPayload = (token_payload *) token->data;
+    consecutiveAck = getConsecutiveAck();
+    
+    newToken = malloc(sizeof(packet));
+    newPayload = newToken->data;
+    newPayload->seq_num = highestSeqNumSent;
+    newPayload->ack = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
+
+    globalWindow.previous_ack = newPayload->ack;
+
+    addNacks(tokenPayload, consecutiveAck, highestSeqNumSent);
+
+
+    newToken->header.type = TOKEN;
+    newPayload->address = machineIndex % numProcesses + 1;
+    
+    return newToken;
+}
+
+void sendToken(packet * token){
+    sendto(mcastConnection.fd, token, sizeof(packet), 0,
+	 (struct sockaddr*) &mcastConnection.send_addr,
+	   sizeof(mcastConnection.send_addr)); 
 }
 
 
@@ -214,20 +360,30 @@ void sendToken(){
    change the entry point into the function; this minimizes
    rewriting stuff when we swtich token operations to unicast */
 void processToken(packet * recvdPacket){
+    token_payload * tokenPayload;
+    packet * newToken;
+    int highestSeqNumSent;
 
+    tokenPayload = (token_payload *) recvdPacket->data;
+
+    if (tokenPayload->address != machineIndex){
+      return;
+    }
+    
     resendNaks(recvdPacket);
 
     slideGlobalWindow(recvdPacket);
 
-    sendPackets(0, 0);
+    highestSeqNumSent = sendPackets(tokenPayload->ack, tokenPayload->seq_num);
     
-    //deliver data
+    newToken = buildToken(recvdPacket, highestSeqNumSent);
 
+    sendToken(newToken);
+
+    /* change this */
+    //free(newToken);
+    
     craftPackets();
-
-    buildToken();
-
-    sendToken();
 
 }
 
@@ -240,8 +396,6 @@ int processStartPacket(char * messageBuffer, int numBytes){
   
     packetPtr = (packet*) messageBuffer;
     returnValue = 0;
-
-    
     
     if (numBytes == sizeof(packet) && packetPtr->header.type == START){
         returnValue = 1;
@@ -277,7 +431,7 @@ int processPacket(char * messageBuffer, int numBytes){
 
 	processDataPacket(recvdPacket);
 
-	clearGlobalWindow();
+	//clearGlobalWindow();
 
     }
 
@@ -353,6 +507,7 @@ int main (int argc, char ** argv)
     if(machineIndex == 1){
         begin = 1;
     }
+    srand (time(NULL));
     
     /* hard coded multicast address */
     //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
