@@ -49,10 +49,10 @@ typedef struct token_payload_type {
 
 
 typedef struct packet_buffer_type{
-    int seq_num;
+    //int seq_num;
     int received;
     packet packet_bytes;
-    int size;
+    //int size;
 } packet_buffer;
 
 

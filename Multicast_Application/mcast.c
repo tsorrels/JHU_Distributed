@@ -40,8 +40,8 @@ void initializeGlobalWindow(){
     globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
         globalWindow.packets[i].received = 0;
-	globalWindow.packets[i].size = -1;
-	globalWindow.packets[i].seq_num = i;      
+	//globalWindow.packets[i].size = -1;
+	//globalWindow.packets[i].seq_num = i;      
     }
     globalWindow.previous_ack = -1;
     globalWindow.has_lowered = 0;
@@ -52,19 +52,20 @@ void initializeSenderWindow(){
     senderWindow.window_start = 0;
     senderWindow.window_end = 0;
     senderWindow.num_built_packets = 0;
+    senderWindow.num_sent_packets = 0;
 
 }
 
 
 /* check to see if packet is in window, return 1 for true */
-int packetInWindow(packet * recvdPacket){
+/*int packetInWindow(packet * recvdPacket){
 
 
     return 0;
-}
+}*/
 
 /* places packet into global window */ 
-void receivePacket(packet * recvdPacket){
+void processDataPacket(packet * recvdPacket){
   int seq_num;
 
   seq_num = recvdPacket->header.seq_num;
@@ -171,7 +172,7 @@ void resendNaks(packet * recvdPacket){
   for(i = 0 ; i < payload->num_nak ; i ++){
     nackValue = payload->nak[i];
     if(globalWindow.packets[nackValue % WINDOW_SIZE].received == 1){
-      sendPacket(nackValue);
+      resendNak(nackValue);
     }
   }    
 }
@@ -271,8 +272,8 @@ void craftPackets(){
 	  (senderWindow.window_end + 1) % SEND_WINDOW_SIZE;
 	senderWindow.num_built_packets ++;
     }
-    while (senderWindow.window_end != senderWindow.window_start +
-	   SEND_WINDOW_SIZE);
+    while (senderWindow.window_end != (senderWindow.window_start +
+	   SEND_WINDOW_SIZE)%SEND_WINDOW_SIZE);
   
 }
 
@@ -316,7 +317,7 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
   
   for (i = consecutiveAck + 1 ; i <= seqNum ; i ++){
     if (globalWindow.packets[i].received != 1){
-      tokenPayload->nak[numNacks] = globalWindow.packets[i].seq_num;
+      tokenPayload->nak[numNacks] = globalWindow.packets[i].packet_bytes.header.seq_num;
       numNacks ++;
     }  
   }
@@ -327,25 +328,26 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
 /* builds token and overwrites previous_token in senderWindow 
  * returns reference to senderWindow.previous_token, which this method
  * overwrites with the new token it is about to send */
-packet * buildToken(packet * token, int highestSeqNumSent){
+packet * buildToken(int highestSeqNumSent, int newAck){
 
-    token_payload * tokenPayload;
+    /*token_payload * tokenPayload;
+    
+    tokenPayload = (token_payload *) token->data;*/
     token_payload * newPayload;
     packet * newToken;
     int consecutiveAck;
-    
-    tokenPayload = (token_payload *) token->data;
     consecutiveAck = getConsecutiveAck();
     
     //newToken = malloc(sizeof(packet));
     newToken = &senderWindow.previous_token;
     newPayload = newToken->data;
     newPayload->seq_num = highestSeqNumSent;
-    newPayload->ack = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
+    //newPayload->ack = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
+    newPayload->ack = newAck;
 
     globalWindow.previous_ack = newPayload->ack;
 
-    addNacks(tokenPayload, consecutiveAck, highestSeqNumSent);
+    addNacks(newPayload, consecutiveAck, highestSeqNumSent);
 
     newToken->header.type = TOKEN;
     newToken->header.rand_num = newRandomNumber();
@@ -369,7 +371,7 @@ void sendToken(packet * token){
 void processToken(packet * recvdPacket){
     token_payload * tokenPayload;
     packet * newToken;
-    int highestSeqNumSent;
+    int highestSeqNumSent, newAck;
 
     tokenPayload = (token_payload *) recvdPacket->data;
 
@@ -384,7 +386,8 @@ void processToken(packet * recvdPacket){
         printDebug("received rebroadcasted duplicate token");
 	return;
     }
-
+    
+    newAck = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
     
     resendNaks(recvdPacket);
 
@@ -392,7 +395,7 @@ void processToken(packet * recvdPacket){
 
     highestSeqNumSent = sendPackets(tokenPayload->ack, tokenPayload->seq_num);
     
-    newToken = buildToken(recvdPacket, highestSeqNumSent);
+    newToken = buildToken(highestSeqNumSent, newAck);
 
     sendToken(newToken);
 
@@ -421,7 +424,7 @@ int processStartPacket(char * messageBuffer, int numBytes){
 }
 
 
-void processDataPacket(packet * recvdPacket){
+/*void processDataPacket(packet * recvdPacket){
     if (packetInWindow(recvdPacket)){
 	receivePacket(recvdPacket);
 
@@ -429,7 +432,7 @@ void processDataPacket(packet * recvdPacket){
     else{
 	printDebug("received data packet outside of window");
     }
-}
+}*/
  
 
 /* returnes what value of timer will be in next select call */
@@ -630,9 +633,10 @@ int main (int argc, char ** argv)
     printDebug("Received start message, continuing to event loop");
 
     if(machineIndex == 1){
-        sendPackets(-1, -1); /* takes ack and seq_num from token */      
-
-      // send token
+        int highestSeqNumSent;
+        highestSeqNumSent = sendPackets(-1, -1); /* takes ack and seq_num from token */
+        // send token
+        sendToken(buildToken(highestSeqNumSent, highestSeqNumSent));
     }   
 
     /* MAIN EVENT LOOP */
