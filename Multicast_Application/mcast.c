@@ -322,6 +322,10 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
   tokenPayload->num_nak = numNacks;
 }
 
+
+/* builds token and overwrites previous_token in senderWindow 
+ * returns reference to senderWindow.previous_token, which this method
+ * overwrites with the new token it is about to send */
 packet * buildToken(packet * token, int highestSeqNumSent){
 
     token_payload * tokenPayload;
@@ -332,7 +336,8 @@ packet * buildToken(packet * token, int highestSeqNumSent){
     tokenPayload = (token_payload *) token->data;
     consecutiveAck = getConsecutiveAck();
     
-    newToken = malloc(sizeof(packet));
+    //newToken = malloc(sizeof(packet));
+    newToken = &senderWindow.previous_token;
     newPayload = newToken->data;
     newPayload->seq_num = highestSeqNumSent;
     newPayload->ack = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
@@ -340,7 +345,6 @@ packet * buildToken(packet * token, int highestSeqNumSent){
     globalWindow.previous_ack = newPayload->ack;
 
     addNacks(tokenPayload, consecutiveAck, highestSeqNumSent);
-
 
     newToken->header.type = TOKEN;
     newPayload->address = machineIndex % numProcesses + 1;
@@ -380,7 +384,7 @@ void processToken(packet * recvdPacket){
 
     sendToken(newToken);
 
-    /* change this */
+    /* we no longer call malloc in buildToken, nor free here */
     //free(newToken);
     
     craftPackets();

@@ -63,6 +63,7 @@ typedef struct sender_window_type {
     packet packets[SEND_WINDOW_SIZE];
     int num_built_packets;
     int num_sent_packets;
+  packet previous_token; /* stored token in case it is lost */
 } sender_window;
 
 typedef struct gloal_window_type {
