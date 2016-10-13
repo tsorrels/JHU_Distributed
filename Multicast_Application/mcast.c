@@ -1,3 +1,4 @@
+
 #include "mcast.h"
 //#include "net_include.h"
 #include "sendto_dbg.h"
@@ -347,7 +348,9 @@ packet * buildToken(packet * token, int highestSeqNumSent){
     addNacks(tokenPayload, consecutiveAck, highestSeqNumSent);
 
     newToken->header.type = TOKEN;
+    newToken->header.rand_num = newRandomNumber();
     newPayload->address = machineIndex % numProcesses + 1;
+
     
     return newToken;
 }
@@ -370,9 +373,18 @@ void processToken(packet * recvdPacket){
 
     tokenPayload = (token_payload *) recvdPacket->data;
 
-    if (tokenPayload->address != machineIndex){
-      return;
+    if (tokenPayload->address != machineIndex ){
+        printDebug("received token not addressed to this processes");
+	return;
     }
+
+    else if (recvdPacket->header.rand_num ==
+	     senderWindow.previous_token.header.rand_num &&
+	     tokenPayload->address == machineIndex ){
+        printDebug("received rebroadcasted duplicate token");
+	return;
+    }
+
     
     resendNaks(recvdPacket);
 
@@ -486,7 +498,7 @@ int main (int argc, char ** argv)
     struct timeval     timeout; // for even loop timeout
     int                begin;
     
-    int startMessageReceived; // indicates whether processes recvd start message
+    int startMessageReceived;// indicates whether processes recvd start message
 
     /* INITIALIZE */
     if (argc < 5){
@@ -576,17 +588,7 @@ int main (int argc, char ** argv)
     FD_SET( sockRecvMcast, &mask );
 
     /* Prepare for execution */
-    if(machineIndex == 1){
-
-        //craft packets
-        //craft token
-    }
-    
-    else{
-        //craft packets
-    }
-
-
+    craftPackets();
     
 
     printf("Waiting to receive start message\n");
@@ -625,16 +627,13 @@ int main (int argc, char ** argv)
 	}
     }
 
-
     printDebug("Received start message, continuing to event loop");
 
-
     if(machineIndex == 1){
-        
-        // send token
-    }
+        sendPackets(-1, -1); /* takes ack and seq_num from token */      
 
-    
+      // send token
+    }   
 
     /* MAIN EVENT LOOP */
     timeout.tv_sec = 0;
@@ -642,11 +641,6 @@ int main (int argc, char ** argv)
 
     for (;;)
     {
-        if(begin){
-  	    //send messages
-	    //send token
-	    begin = 0;
-	}
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
 			      &dummy_mask, &timeout);
