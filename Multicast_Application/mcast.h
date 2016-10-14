@@ -13,14 +13,15 @@
 typedef enum {
     DATA,
     TOKEN,
-    START
+    START,
+    FIN
 } packet_type;
 
 typedef enum {
     WAITING_START,
     TOKEN_SENT,
     AWAITING_TOKEN,
-    CLOSING
+    FINISHED /* indicates process has sent all its messages */
 } process_state_type;
 
 typedef struct connection_type{
@@ -50,6 +51,7 @@ typedef struct token_payload_type {
     int ack;
     int num_nak;
     int nak[MAX_NAK];
+    int num_shutdown;
 } token_payload;
 
 
@@ -77,4 +79,5 @@ typedef struct gloal_window_type {
     packet_buffer packets [WINDOW_SIZE];
     int previous_ack;
     int has_token;
+  int fd;
 } global_window;
