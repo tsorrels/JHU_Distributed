@@ -54,10 +54,10 @@ typedef struct token_payload_type {
 
 
 typedef struct packet_buffer_type{
-    int seq_num;
+    //int seq_num;
     int received;
     packet packet_bytes;
-    int size;
+    //int size;
 } packet_buffer;
 
 
@@ -76,5 +76,5 @@ typedef struct gloal_window_type {
     int window_end; /* sequence number */
     packet_buffer packets [WINDOW_SIZE];
     int previous_ack;
-    int has_lowered;
+    int has_token;
 } global_window;
