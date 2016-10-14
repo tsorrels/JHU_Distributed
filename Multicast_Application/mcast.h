@@ -7,6 +7,9 @@
 #define MAX_MESSAGE 100
 #define MAX_RAND 1000000
 
+#define TOKEN_RESEND_TIMER 1000 /* in us */
+#define AWAITING_TOKEN_TIMER 1000 /* in us */
+
 typedef enum {
     DATA,
     TOKEN,
@@ -14,7 +17,9 @@ typedef enum {
 } packet_type;
 
 typedef enum {
-    WAITING_START, 
+    WAITING_START,
+    TOKEN_SENT,
+    AWAITING_TOKEN,
     CLOSING
 } process_state_type;
 

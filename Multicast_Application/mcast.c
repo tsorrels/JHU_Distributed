@@ -439,14 +439,15 @@ int processPacket(char * messageBuffer, int numBytes){
     int clearWindow;
 
     clearWindow = 0; /* not sure how we will set this, prolly with a funccal */
-    timerValue = 10; /* default of resetting timer to 10usec */
+    timerValue = 10000; /* default of resetting timer to 10000usec */
     recvdPacket = (packet*)messageBuffer;
     
     if(recvdPacket->header.type == DATA){
 	printDebug("Received data packet from mcast socket");
 
+	processState = AWAITING_TOKEN;
 	processDataPacket(recvdPacket);
-
+	timerValue = AWAITING_TOKEN_TIMER;
 	//clearGlobalWindow();
 
     }
@@ -459,7 +460,8 @@ int processPacket(char * messageBuffer, int numBytes){
 	   change the entry point into the function; this minimizes
 	   rewriting stuff when we swtich token operations to unicast */
 	processToken(recvdPacket);
-
+	processState = TOKEN_SENT;
+	timerValue = TOKEN_RESEND_TIMER;
     }
 
 
@@ -469,11 +471,21 @@ int processPacket(char * messageBuffer, int numBytes){
     }
 
     
-    return 0;
+    return timerValue;
 }
 
 void handleTimeout(){
+    if (processState == TOKEN_SENT){
+    // resend token
+        printDebug("timeout fired, resending token");
+    }
 
+
+    else if (processState == AWAITING_TOKEN){
+    // resend token
+        printDebug("timeout fired, AWAITING_TOKEN");
+    }
+    
 }
 
 
