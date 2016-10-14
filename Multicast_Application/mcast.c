@@ -44,7 +44,7 @@ void initializeGlobalWindow(){
 	//globalWindow.packets[i].seq_num = i;      
     }
     globalWindow.previous_ack = -1;
-    globalWindow.has_lowered = 0;
+    globalWindow.has_token = 0;
 }
 
 void initializeSenderWindow(){
@@ -352,7 +352,7 @@ packet * buildToken(int highestSeqNumSent, int newAck){
     newToken->header.type = TOKEN;
     newToken->header.rand_num = newRandomNumber();
     newPayload->address = machineIndex % numProcesses + 1;
-
+    globalWindow.has_token = 1;
     
     return newToken;
 }
@@ -476,7 +476,9 @@ int processPacket(char * messageBuffer, int numBytes){
 }
 
 void handleTimeout(){
-
+    if(globalWindow.has_token){
+        sendToken(&senderWindow.previous_token);
+    }
 }
 
 
