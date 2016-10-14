@@ -26,7 +26,7 @@ typedef enum {
 
 typedef struct connection_type{
   int fd;
-  struct sockaddr send_addr;
+  struct sockaddr_in send_addr;
   
 } connection;
 
