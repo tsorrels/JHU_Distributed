@@ -39,6 +39,8 @@ void printDebug(char* message){
 
 void initializeGlobalWindow(){
     int i;
+    char fileName[] = "file_00";
+    fileName[6] = (machineIndex + 65);
     globalWindow.window_start = 0;
     globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
@@ -49,6 +51,10 @@ void initializeGlobalWindow(){
     globalWindow.previous_ack = -1;
     globalWindow.has_token = 0;
     globalWindow.fd = fopen(machineIndex + 65, "w");
+    if (globalWindow.fd < 0){
+      perror("fopen failed!");
+    }
+
 }
 
 void initializeSenderWindow(){
