@@ -23,6 +23,7 @@ int lossRate;
 
 
 void sendPacket(int seq_num);
+void resendNak(int seq_num);
 
 void closeConnection(){
     exit(0);
@@ -51,7 +52,7 @@ void initializeGlobalWindow(){
     globalWindow.previous_ack = -1;
     globalWindow.has_token = 0;
     globalWindow.fd = fopen(fileName, "w");
-    if (globalWindow.fd <= 0){
+    if (globalWindow.fd == NULL){
       perror("fopen failed!");
     }
 
@@ -167,7 +168,7 @@ int clearGlobalWindow(int tokenAck){
 
 void slideGlobalWindow(packet * token){
 
-  int consecutiveAck;
+  //int consecutiveAck;
   token_payload * tokenPayload;
   int clearedToSeqNum;
 
@@ -195,7 +196,7 @@ void resendNaks(packet * recvdPacket){
   token_payload * payload;
   int nackValue;
   
-  payload = recvdPacket->data;
+  payload = (token_payload *)recvdPacket->data;
   
   for(i = 0 ; i < payload->num_nak ; i ++){
     nackValue = payload->nak[i];
@@ -381,7 +382,7 @@ packet * buildToken(int highestSeqNumSent, int newAck){
     
     //newToken = malloc(sizeof(packet));
     newToken = &senderWindow.previous_token;
-    newPayload = newToken->data;
+    newPayload = (token_payload *)newToken->data;
     newPayload->seq_num = highestSeqNumSent;
     //newPayload->ack = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
     newPayload->ack = newAck;
@@ -449,7 +450,7 @@ void processToken(packet * recvdPacket){
     
     newToken = buildToken(highestSeqNumSent, newAck);
 
-    newTokenPayload = newToken->data;
+    newTokenPayload = (token_payload *)newToken->data;
     if(debug){
         printf("Number of sent packets = %d, Number of packets to send = %d\n",senderWindow.num_sent_packets,numPacketsToSend);
     }
@@ -485,7 +486,7 @@ void processToken(packet * recvdPacket){
 /* only called when state is waiting for start packet */
 int processStartPacket(char * messageBuffer, int numBytes){
     packet * packetPtr;
-    int returnValue;
+    int returnValue, highestSeqNumSent;;
     
     printDebug("Processing packet in processStartPacket");
   
@@ -495,19 +496,33 @@ int processStartPacket(char * messageBuffer, int numBytes){
     if (numBytes == sizeof(packet) && packetPtr->header.type == START){
         returnValue = 1;
     }
+    if (processState == WAITING_START &&
+	packetPtr->header.type == START){
+        processState = AWAITING_TOKEN;
+        printDebug("received start packet");
+        if(machineIndex == 1){
+          printDebug("process index = 1 building first token");
+          /* takes ack and seq_num from token */
+          highestSeqNumSent = sendPackets(-1, -1); 
+          sendToken(buildToken(highestSeqNumSent, highestSeqNumSent));
+          printDebug("transitioning to TOKEN_SENT");
+          processState = TOKEN_SENT;
+          
+        }
+    }
 
     return returnValue;
 }
 
 
-/* returnes what value of timer will be in next select call */
+/* returns what value of timer will be in next select call */
 int processPacket(char * messageBuffer, int numBytes){
     packet * recvdPacket;
     int timerValue;
-    int clearWindow;
+    //int clearWindow;
     int highestSeqNumSent;
     
-    clearWindow = 0; /* not sure how we will set this, prolly with a funccal */
+    //clearWindow = 0; /* not sure how we will set this, prolly with a funccal */
     timerValue = 1000000; /* default of resetting timer to 10000usec */
     recvdPacket = (packet*)messageBuffer;
 
@@ -608,7 +623,7 @@ int main (int argc, char ** argv)
     //int                begin;
     
     int startMessageReceived;// indicates whether processes recvd start message
-    int highestSeqNumSent; // used for first process and input into first tok
+    //int highestSeqNumSent; // used for first process and input into first tok
 
     
     /* INITIALIZE */
@@ -626,7 +641,8 @@ int main (int argc, char ** argv)
 	    debug = 1;
 	    printDebug("dubug set");
 	}
-    }   
+    }
+    recv_dbg_init( lossRate, machineIndex );
     initializeGlobalWindow();
     initializeSenderWindow();
     startMessageReceived = 0;
@@ -720,8 +736,8 @@ int main (int argc, char ** argv)
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
 			      &dummy_mask
-			      //, &timeout
-			      , NULL
+			      , &timeout
+			      //, NULL
 			      );
 
     if (numReadyFDs > 0) {
@@ -732,20 +748,21 @@ int main (int argc, char ** argv)
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
 
-		//startMessageReceived = processStartPacket(mess_buf, 
-		//					  numBytesRead);
-		timeout.tv_usec = processPacket(mess_buf, numBytesRead);
+        if(numBytesRead > 0)
+            startMessageReceived = processStartPacket(mess_buf, 
+							  numBytesRead);
+		//timeout.tv_usec = processPacket(mess_buf, numBytesRead);
 
-		//if (startMessageReceived == 1){
-		//    break;
-		//}
+		if (startMessageReceived == 1){
+		    break;
+		}
 	    }
 	}
 
 	else{
 	  printf(".");
 	  fflush(0);
-	  handleTimeout();
+	  //handleTimeout();
 	}
     }
 
@@ -758,7 +775,7 @@ int main (int argc, char ** argv)
 
     for (;;)
     {
-        timeout.tv_sec = 1;
+        timeout.tv_sec = 10;
         timeout.tv_usec = 0;
 
         temp_mask = mask;
@@ -768,10 +785,10 @@ int main (int argc, char ** argv)
         if (numReadyFDs > 0) {
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
   	        printDebug("from event loop: socket received data ");
-                numBytesRead = recv( sockRecvMcast, mess_buf, 
+                numBytesRead = recv_dbg( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
-
-		timeout.tv_usec = processPacket(mess_buf, numBytesRead);
+            if(numBytesRead > 0)
+                timeout.tv_usec = processPacket(mess_buf, numBytesRead);
 	    }
 	}
 

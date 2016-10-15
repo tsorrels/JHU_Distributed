@@ -39,7 +39,7 @@ int main (int argc, char ** argv)
 
     printf("Sending start packet\n");
 
-    printf("size of pakcet is %d\n", sizeof(startPacket));
+    //printf("size of packet is %d\n", sizeof(startPacket));
     
     /* send start message to mcast address*/
     numBytesSent = sendto(sockSendMcast, startPacket, sizeof(packet), 0, 
