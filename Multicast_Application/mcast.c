@@ -454,9 +454,10 @@ void processToken(packet * recvdPacket){
         printf("Number of sent packets = %d, Number of packets to send = %d\n",senderWindow.num_sent_packets,numPacketsToSend);
     }
 
-    /* if done sending messages, transition to FINISHED and mark token */
+    /* if done sending messages and delivered all messages till the highest seq num, transition to FINISHED and mark token */
     if (senderWindow.num_sent_packets == numPacketsToSend &&
-        processState != FINISHED){
+        processState != FINISHED &&
+        globalWindow.window_start == (tokenPayload->seq_num+1)){
         processState = FINISHED;
 	newTokenPayload->num_shutdown = tokenPayload->num_shutdown + 1;
         //craftPackets();
