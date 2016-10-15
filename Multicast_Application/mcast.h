@@ -79,5 +79,5 @@ typedef struct gloal_window_type {
     packet_buffer packets [WINDOW_SIZE];
     int previous_ack;
     int has_token;
-  int fd;
+    FILE *fd;
 } global_window;

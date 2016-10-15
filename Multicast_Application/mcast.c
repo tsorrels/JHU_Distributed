@@ -51,7 +51,7 @@ void initializeGlobalWindow(){
     globalWindow.previous_ack = -1;
     globalWindow.has_token = 0;
     globalWindow.fd = fopen(fileName, "w");
-    if (globalWindow.fd < 0){
+    if (globalWindow.fd <= 0){
       perror("fopen failed!");
     }
 
@@ -263,7 +263,7 @@ int sendPackets(int ack, int seq_num){
 	   //i <= (ack + WINDOW_SIZE) &&
 	   i <= globalWindow.window_end &&
 	   i <= seq_num + MAX_MESSAGE &&
-	   senderWindow.num_sent_packets <= senderWindow.num_built_packets){
+	   senderWindow.num_sent_packets < senderWindow.num_built_packets){
         sendPacket(i);
 	i ++;
     }
@@ -297,7 +297,7 @@ void craftPackets(){
         if (senderWindow.num_built_packets == numPacketsToSend){
   	    printDebug("built max packets");
 	    break;
-	}
+        }
 	//newPacket = buildPacket()
 	buildPacket(&senderWindow.packets[senderWindow.num_built_packets %
 					 SEND_WINDOW_SIZE]);
@@ -419,7 +419,9 @@ void processToken(packet * recvdPacket){
     token_payload * tokenPayload;
     token_payload * newTokenPayload;
     packet * newToken;
-    int highestSeqNumSent, newAck;
+    int highestSeqNumSent, newAck, prev_ack;
+    
+    prev_ack = globalWindow.previous_ack;
 
     tokenPayload = (token_payload *) recvdPacket->data;
     if (debug)
@@ -437,17 +439,20 @@ void processToken(packet * recvdPacket){
 	return;
     }
     
-    newAck = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
-    
     resendNaks(recvdPacket);
 
     slideGlobalWindow(recvdPacket);
     
     highestSeqNumSent = sendPackets(tokenPayload->ack, tokenPayload->seq_num);
     
+    newAck = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
+    
     newToken = buildToken(highestSeqNumSent, newAck);
 
     newTokenPayload = newToken->data;
+    if(debug){
+        printf("Number of sent packets = %d, Number of packets to send = %d\n",senderWindow.num_sent_packets,numPacketsToSend);
+    }
 
     /* if done sending messages, transition to FINISHED and mark token */
     if (senderWindow.num_sent_packets == numPacketsToSend &&
@@ -455,15 +460,15 @@ void processToken(packet * recvdPacket){
         processState = FINISHED;
 	newTokenPayload->num_shutdown = tokenPayload->num_shutdown + 1;
         //craftPackets();
-
-
+        printDebug("Process state is FINISHED");
     }
     
     else if(tokenPayload -> num_shutdown == numProcesses &&
-	    globalWindow.previous_ack == tokenPayload->seq_num){
+	    prev_ack == tokenPayload->seq_num){
 
         /* change token to a FIN packet */
-        newToken->header.type = FIN;    
+        newToken->header.type = FIN;
+        printDebug("Sending FIN token");
     }
 
     
@@ -524,7 +529,8 @@ int processPacket(char * messageBuffer, int numBytes){
     
     else if(recvdPacket->header.type == DATA){
       //printDebug("Received data packet from mcast socket");
-	processState = AWAITING_TOKEN;
+      if(processState != FINISHED)
+         processState = AWAITING_TOKEN;
 	processDataPacket(recvdPacket);
 	timerValue = AWAITING_TOKEN_TIMER;
 	//clearGlobalWindow();
@@ -539,7 +545,8 @@ int processPacket(char * messageBuffer, int numBytes){
 	   change the entry point into the function; this minimizes
 	   rewriting stuff when we swtich token operations to unicast */
 	processToken(recvdPacket);
-	processState = TOKEN_SENT;
+    if(processState != FINISHED)
+	   processState = TOKEN_SENT;
 	timerValue = TOKEN_RESEND_TIMER;
     }
 
