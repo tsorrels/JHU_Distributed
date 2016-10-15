@@ -25,7 +25,7 @@ int lossRate;
 void sendPacket(int seq_num);
 
 void closeConnection(){
-
+    exit(0);
 }
 
 
@@ -50,7 +50,7 @@ void initializeGlobalWindow(){
     }
     globalWindow.previous_ack = -1;
     globalWindow.has_token = 0;
-    globalWindow.fd = fopen(machineIndex + 65, "w");
+    globalWindow.fd = fopen(fileName, "w");
     if (globalWindow.fd < 0){
       perror("fopen failed!");
     }
@@ -129,8 +129,7 @@ int min (int left, int right){
 void deliverPacket(packet * deliveredPacket){
   
   if(debug){
-  //fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
-    printf("%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
+  fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
 	   deliveredPacket->header.seq_num, 
 	   deliveredPacket->header.rand_num);
 
@@ -598,7 +597,7 @@ int main (int argc, char ** argv)
     int                numBytesRead; // used in calls to recv
     char               mess_buf[sizeof(packet)]; // buffer to receive packets
     struct timeval     timeout; // for even loop timeout
-    int                begin;
+    //int                begin;
     
     int startMessageReceived;// indicates whether processes recvd start message
     int highestSeqNumSent; // used for first process and input into first tok
@@ -623,15 +622,15 @@ int main (int argc, char ** argv)
     initializeGlobalWindow();
     initializeSenderWindow();
     startMessageReceived = 0;
-    begin = 0;
+    /*begin = 0;
     if(machineIndex == 1){
         begin = 1;
-    }
+    }*/
     srand (time(NULL));
     
     /* hard coded multicast address */
-    mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
-    //mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
+    //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
+    mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
     
     //debug = 0;
     processState = WAITING_START;
@@ -684,6 +683,7 @@ int main (int argc, char ** argv)
     send_addr.sin_addr.s_addr = htonl(mcast_addr);  /* mcast address */
     send_addr.sin_port = htons(PORT);
     mcastConnection.fd = sockSendMcast;
+    mcastConnection.send_addr = send_addr;
     memcpy(&mcastConnection.send_addr, &send_addr, sizeof(struct sockaddr_in));
     //mcastConnection.send_addr = (sock_addr) send_addr;
     /******* END SET UP MCAST SEND SOCKET ********/
@@ -706,20 +706,20 @@ int main (int argc, char ** argv)
     /* WAIT FOR START MESSAGE */
     for (;;)
     {
-        timeout.tv_sec = 1;
+        timeout.tv_sec = 10;
         timeout.tv_usec = 0;
 
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
 			      &dummy_mask
-			      , &timeout
-			      //, NULL
+			      //, &timeout
+			      , NULL
 			      );
 
-        if (numReadyFDs > 0) {
+    if (numReadyFDs > 0) {
 
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
-	      //printDebug("Received data");
+	      printDebug("Received data");
 
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
@@ -735,8 +735,8 @@ int main (int argc, char ** argv)
 	}
 
 	else{
-	  //printf(".");
-	  // fflush(0);
+	  printf(".");
+	  fflush(0);
 	  handleTimeout();
 	}
     }
