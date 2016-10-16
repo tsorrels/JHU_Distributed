@@ -82,8 +82,8 @@ void processDataPacket(packet * recvdPacket){
   seq_num = recvdPacket->header.seq_num;
     // check to see if in window
 
-  if (debug)
-    printf("Received seq_num %d\n", seq_num);
+  /*if (debug)
+    printf("Received seq_num %d\n", seq_num);*/
 
 
   if (seq_num < globalWindow.window_start ||
@@ -93,9 +93,12 @@ void processDataPacket(packet * recvdPacket){
 
   else{
     // copy packet into global window
-    memcpy(& globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes,
+    memcpy(&(globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes),
 	   recvdPacket, sizeof(packet));
     globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
+    if (debug)
+    printf("Received seq_num %d stored at index %d\n", 
+        globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num, seq_num % WINDOW_SIZE);
 
   }
 }
@@ -133,7 +136,7 @@ void deliverPacket(packet * deliveredPacket){
   fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
 	   deliveredPacket->header.seq_num, 
 	   deliveredPacket->header.rand_num);
-
+  fflush(globalWindow.fd);
   }
 }
 
@@ -229,8 +232,8 @@ void sendPacket(int seq_num){
     packet * sendingPacket;
 
 
-    if (debug)
-      printf("sending packet seq_num =  %d\n", seq_num);
+    /*if (debug)
+      printf("sending packet seq_num =  %d\n", seq_num);*/
     
     sendingPacket = &(senderWindow.packets[senderWindow.window_start]);
     sendingPacket->header.seq_num = seq_num;
@@ -241,8 +244,10 @@ void sendPacket(int seq_num){
 	   sizeof(mcastConnection.send_addr));
 
     // load into global window
-    memcpy(&globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes,
+    memcpy(&(globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes),
 	   sendingPacket, sizeof(packet));
+    if (debug)
+      printf("sending packet seq_num =  %d\n", globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num);
     globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
     //globalWindow.window_end ++;
 
@@ -352,12 +357,11 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
   numNacks = 0;
   
   for (i = consecutiveAck + 1 ; i <= seqNum ; i ++){
-    if (globalWindow.packets[i].received != 1){
+    if (globalWindow.packets[i%WINDOW_SIZE].received != 1){
       if(debug)
-	printf("adding nak = %d\n",
-	       globalWindow.packets[i].packet_bytes.header.seq_num);
-      tokenPayload->nak[numNacks] =
-	globalWindow.packets[i].packet_bytes.header.seq_num;
+	printf("adding nak = %d\n", i);
+      tokenPayload->nak[numNacks] = i;
+	//globalWindow.packets[i%WINDOW_SIZE].packet_bytes.header.seq_num;
       numNacks ++;
     }  
   }
@@ -420,13 +424,14 @@ void processToken(packet * recvdPacket){
     token_payload * tokenPayload;
     token_payload * newTokenPayload;
     packet * newToken;
-    int highestSeqNumSent, newAck, prev_ack;
+    int highestSeqNumSent, newAck, prev_ack, k;
     
     prev_ack = globalWindow.previous_ack;
 
     tokenPayload = (token_payload *) recvdPacket->data;
     if (debug)
-      printf("Received token addressed to %d\n", tokenPayload->address);
+      printf("Received token addressed to %d, ack = %d, num_nacks = %d, seq_num = %d, num_shutdown = %d\n", 
+        tokenPayload->address, tokenPayload->ack, tokenPayload->num_nak, tokenPayload->seq_num, tokenPayload->num_shutdown);
     
     if (tokenPayload->address != machineIndex ){
         printDebug("received token not addressed to this processes");
@@ -463,6 +468,7 @@ void processToken(packet * recvdPacket){
 	newTokenPayload->num_shutdown = tokenPayload->num_shutdown + 1;
         //craftPackets();
         printDebug("Process state is FINISHED");
+        sendToken(newToken);
     }
     
     else if(tokenPayload -> num_shutdown == numProcesses &&
@@ -471,12 +477,16 @@ void processToken(packet * recvdPacket){
         /* change token to a FIN packet */
         newToken->header.type = FIN;
         printDebug("Sending FIN token");
+        for(k = 0;k < 50;k++)
+            sendToken(newToken);
+    }
+    else{
+        sendToken(newToken);
     }
 
     
     /* we no longer call malloc in buildToken, nor free here */
     //free(newToken);
-    sendToken(newToken);
 	
     if (processState != FINISHED){
         craftPackets();
@@ -583,7 +593,7 @@ int processPacket(char * messageBuffer, int numBytes){
 void handleTimeout(){
 
   //printDebug("handleTimeout fired");
-  if (processState == TOKEN_SENT){
+  /*if (processState == TOKEN_SENT){
     // resend token
         printDebug("timeout fired, resending token");
 	sendToken(&senderWindow.previous_token);
@@ -597,7 +607,8 @@ void handleTimeout(){
     
     //if(globalWindow.has_token){
     //sendToken(&senderWindow.previous_token);
-	//}
+	//}*/
+    sendToken(&senderWindow.previous_token);
 }
 
 
@@ -743,7 +754,7 @@ int main (int argc, char ** argv)
     if (numReadyFDs > 0) {
 
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
-	      printDebug("Received data");
+	      //printDebug("Received data");
 
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
@@ -770,12 +781,12 @@ int main (int argc, char ** argv)
 
 
     /* MAIN EVENT LOOP */
-    timeout.tv_sec = 10;
+    timeout.tv_sec = 1;
     timeout.tv_usec = 0;
 
     for (;;)
     {
-        timeout.tv_sec = 10;
+        timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
         temp_mask = mask;
@@ -784,7 +795,7 @@ int main (int argc, char ** argv)
 
         if (numReadyFDs > 0) {
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
-  	        printDebug("from event loop: socket received data ");
+  	        //printDebug("from event loop: socket received data ");
                 numBytesRead = recv_dbg( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
             if(numBytesRead > 0)

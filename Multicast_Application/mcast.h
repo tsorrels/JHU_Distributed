@@ -77,7 +77,7 @@ typedef struct sender_window_type {
 typedef struct gloal_window_type {
     int window_start; /* sequence number */
     int window_end; /* sequence number */
-    packet_buffer packets [WINDOW_SIZE];
+    packet_buffer packets[WINDOW_SIZE];
     int previous_ack;
     int has_token;
     FILE *fd;
