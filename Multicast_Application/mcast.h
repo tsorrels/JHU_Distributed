@@ -4,12 +4,14 @@
 #define WINDOW_SIZE 340
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 340
-#define SEND_WINDOW_SIZE 200
-#define MAX_MESSAGE 100
+#define SEND_WINDOW_SIZE 100
+#define MAX_MESSAGE 50
 #define MAX_RAND 1000000
 
+#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
+
 #define TOKEN_RESEND_TIMER 1000 /* in us */
-#define AWAITING_TOKEN_TIMER 1000 /* in us */
+#define AWAITING_TOKEN_TIMER 10000 /* in us */
 
 typedef enum {
     DATA,

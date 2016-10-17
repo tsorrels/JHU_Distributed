@@ -26,7 +26,8 @@ void sendPacket(int seq_num);
 void resendNak(int seq_num);
 
 void closeConnection(){
-    exit(0);
+  fflush(globalWindow.fd);
+  exit(0);
 }
 
 
@@ -41,7 +42,7 @@ void printDebug(char* message){
 void initializeGlobalWindow(){
     int i;
     char fileName[] = "file_00";
-    fileName[6] = (machineIndex + 65);
+    fileName[6] = (machineIndex + 48);
     globalWindow.window_start = 0;
     globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
@@ -88,7 +89,8 @@ void processDataPacket(packet * recvdPacket){
 
   if (seq_num < globalWindow.window_start ||
       seq_num > globalWindow.window_end){
-    printDebug("received packet outside window");
+    if (debug)
+      printf("received packet outside window seq=%d\n", seq_num);
   }
 
   else{
@@ -133,10 +135,10 @@ int min (int left, int right){
 void deliverPacket(packet * deliveredPacket){
   
   if(debug){
-  fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
-	   deliveredPacket->header.seq_num, 
-	   deliveredPacket->header.rand_num);
-  fflush(globalWindow.fd);
+    fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
+	    deliveredPacket->header.seq_num, 
+	    deliveredPacket->header.rand_num);
+    //fflush(globalWindow.fd);
   }
 }
 
@@ -148,9 +150,8 @@ int clearGlobalWindow(int tokenAck){
   int i;
   int prevAck;
 
-  printDebug("clearing global window");
+  //printDebug("clearing global window");
   prevAck = min(globalWindow.previous_ack, tokenAck);
-  printDebug("min returned");
 
   
   for (i = globalWindow.window_start ; i <= prevAck ; i ++){
@@ -163,7 +164,9 @@ int clearGlobalWindow(int tokenAck){
 
   }
 
-  printDebug("returning from clearGlobalWindow");
+  if (debug)
+    printf("sliding global window, new start = %d\n", i);
+  //printDebug("returning from clearGlobalWindow");
 
   return i;  
 }
@@ -536,7 +539,7 @@ int processPacket(char * messageBuffer, int numBytes){
     int highestSeqNumSent;
     
     //clearWindow = 0; /* not sure how we will set this, prolly with a funccal */
-    timerValue = 1000000; /* default of resetting timer to 10000usec */
+    timerValue = 1000; /* default of resetting timer to 10000usec */
     recvdPacket = (packet*)messageBuffer;
 
 
@@ -558,23 +561,25 @@ int processPacket(char * messageBuffer, int numBytes){
     
     else if(recvdPacket->header.type == DATA){
       //printDebug("Received data packet from mcast socket");
-      if(processState != FINISHED)
-         processState = AWAITING_TOKEN;
-	processDataPacket(recvdPacket);
-	timerValue = AWAITING_TOKEN_TIMER;
-	//clearGlobalWindow();
+      if(processState != FINISHED){
+	//&& senderWindow.previous_token.seq_num < recvdPacket->header.seq_num)
+	processState = AWAITING_TOKEN;
+      }
+      processDataPacket(recvdPacket);
+      timerValue = AWAITING_TOKEN_TIMER;
+      //clearGlobalWindow();
 
     }
     
     else if(recvdPacket->header.type == TOKEN){
-	printDebug("Received token packet from mcast socket");
+      //printDebug("Received token packet from mcast socket");
 
 	/* this method does a LOT,  but the idea is to add a bunch of 
 	   functionality in this one method and then just be able to 
 	   change the entry point into the function; this minimizes
 	   rewriting stuff when we swtich token operations to unicast */
 	processToken(recvdPacket);
-    if(processState != FINISHED)
+	if(processState != FINISHED)
 	   processState = TOKEN_SENT;
 	timerValue = TOKEN_RESEND_TIMER;
     }
@@ -611,6 +616,7 @@ void handleTimeout(){
     //if(globalWindow.has_token){
     //sendToken(&senderWindow.previous_token);
 	//}*/
+  //if (processState == TOKEN_SENT)
     sendToken(&senderWindow.previous_token);
 }
 
@@ -668,7 +674,8 @@ int main (int argc, char ** argv)
     
     /* hard coded multicast address */
     //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
-    mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
+    //mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
+    mcast_addr = MCAST_ADDR;
     
     //debug = 0;
     processState = WAITING_START;
@@ -784,13 +791,13 @@ int main (int argc, char ** argv)
 
 
     /* MAIN EVENT LOOP */
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100;
 
     for (;;)
     {
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
+      //timeout.tv_sec = 0;
+      //timeout.tv_usec = 100;
 
         temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
