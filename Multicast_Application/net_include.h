@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>

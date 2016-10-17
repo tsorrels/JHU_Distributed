@@ -1,10 +1,10 @@
 #include "net_include.h"
 #include "recv_dbg.h"
 
-#define WINDOW_SIZE 340
+#define WINDOW_SIZE 1000
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 340
-#define SEND_WINDOW_SIZE 100
+#define SEND_WINDOW_SIZE 500
 #define MAX_MESSAGE 50
 #define MAX_RAND 1000000
 

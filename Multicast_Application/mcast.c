@@ -204,7 +204,7 @@ void slideGlobalWindow(packet * token){
   /* clear window and deliver data */
   clearedToSeqNum = clearGlobalWindow(tokenPayload->ack);
 
-  printDebug("cleared global window");
+  //printDebug("cleared global window");
 
   
   /* update window */
@@ -379,7 +379,7 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
 
   numNacks = 0;
   
-  for (i = consecutiveAck + 1 ; i <= seqNum ; i ++){
+  for (i = consecutiveAck + 1 ; i <= seqNum && numNacks < MAX_NAK; i ++){
     if (globalWindow.packets[i%WINDOW_SIZE].received != 1){
       if(debug)
 	printf("adding nak = %d\n", i);
@@ -766,7 +766,9 @@ int main (int argc, char ** argv)
 
     /* Prepare for execution */
     craftPackets();  
-
+    //printf("sizeof payload = %d\n", PAYLOAD_SIZE);
+    //printf("sizeof INT = %d\n", sizeof(int));
+    
     printf("Waiting to receive start message\n");
     /* WAIT FOR START MESSAGE */
     for (;;)
