@@ -374,7 +374,7 @@ void addNacks(token_payload * tokenPayload, int consecutiveAck, int seqNum)
 /* builds token and overwrites previous_token in senderWindow 
  * returns reference to senderWindow.previous_token, which this method
  * overwrites with the new token it is about to send */
-packet * buildToken(int highestSeqNumSent, int newAck){
+packet * buildToken(int highestSeqNumSent, int newAck, int rand_num){
 
     /*token_payload * tokenPayload;
     
@@ -396,7 +396,10 @@ packet * buildToken(int highestSeqNumSent, int newAck){
     addNacks(newPayload, consecutiveAck, highestSeqNumSent);
 
     newToken->header.type = TOKEN;
-    newToken->header.rand_num = newRandomNumber();
+    if(rand_num == -1)
+        newToken->header.rand_num = 1;
+    else
+        newToken->header.rand_num = rand_num + 1;
     newPayload->address = machineIndex % numProcesses + 1;
     globalWindow.has_token = 1;           
 
@@ -438,7 +441,7 @@ void processToken(packet * recvdPacket){
 	return;
     }
 
-    else if (recvdPacket->header.rand_num ==
+    else if (recvdPacket->header.rand_num <=
 	     senderWindow.previous_token.header.rand_num &&
 	     tokenPayload->address == machineIndex ){
         printDebug("received rebroadcasted duplicate token");
@@ -453,7 +456,7 @@ void processToken(packet * recvdPacket){
     
     newAck = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
     
-    newToken = buildToken(highestSeqNumSent, newAck);
+    newToken = buildToken(highestSeqNumSent, newAck, recvdPacket->header.rand_num);
 
     newTokenPayload = (token_payload *)newToken->data;
     if(debug){
@@ -514,7 +517,7 @@ int processStartPacket(char * messageBuffer, int numBytes){
           printDebug("process index = 1 building first token");
           /* takes ack and seq_num from token */
           highestSeqNumSent = sendPackets(-1, -1); 
-          sendToken(buildToken(highestSeqNumSent, highestSeqNumSent));
+          sendToken(buildToken(highestSeqNumSent, highestSeqNumSent, -1));
           printDebug("transitioning to TOKEN_SENT");
           processState = TOKEN_SENT;
           
@@ -545,7 +548,7 @@ int processPacket(char * messageBuffer, int numBytes){
 	  printDebug("process index = 1 building first token");
 	  /* takes ack and seq_num from token */
 	  highestSeqNumSent = sendPackets(-1, -1); 
-	  sendToken(buildToken(highestSeqNumSent, highestSeqNumSent));
+	  sendToken(buildToken(highestSeqNumSent, highestSeqNumSent, recvdPacket->header.rand_num));
 	  printDebug("transitioning to TOKEN_SENT");
 	  processState = TOKEN_SENT;
 	  
