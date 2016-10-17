@@ -1,7 +1,5 @@
 
 #include "mcast.h"
-//#include "net_include.h"
-#include "sendto_dbg.h"
 
 
 /* global variables, accessable throughout program */
@@ -11,6 +9,7 @@ sender_window senderWindow;
 global_window globalWindow;
 int debug;
 process_state_type processState;
+struct timeval diff,end,start;
 
 
 int numPacketsToSend;
@@ -25,12 +24,33 @@ int lossRate;
 void sendPacket(int seq_num);
 void resendNak(int seq_num);
 
-void closeConnection(){
-  fflush(globalWindow.fd);
-  exit(0);
+struct timeval diffTime(struct timeval left, struct timeval right)
+{
+    struct timeval diff;
+
+    diff.tv_sec  = left.tv_sec - right.tv_sec;
+    diff.tv_usec = left.tv_usec - right.tv_usec;
+
+    if (diff.tv_usec < 0) {
+        diff.tv_usec += 1000000;
+        diff.tv_sec--;
+    }
+
+    if (diff.tv_sec < 0) {
+        printf("WARNING: diffTime has negative result, returning 0!\n");
+        diff.tv_sec = diff.tv_usec = 0;
+    }
+
+    return diff;
 }
 
-
+void closeConnection(){
+  fflush(globalWindow.fd);
+  gettimeofday(&end, NULL);
+  diff = diffTime(end,start);
+  printf("Total time taken for transfer = %lf seconds\n",(diff.tv_sec+(diff.tv_usec)/1000000.0));
+  exit(0);
+}
 
 void printDebug(char* message){
     if (debug){
@@ -508,7 +528,7 @@ int processStartPacket(char * messageBuffer, int numBytes){
   
     packetPtr = (packet*) messageBuffer;
     returnValue = 0;
-    
+    gettimeofday(&start, NULL);
     if (numBytes == sizeof(packet) && packetPtr->header.type == START){
         returnValue = 1;
     }
