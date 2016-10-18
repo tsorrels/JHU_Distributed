@@ -689,7 +689,7 @@ int processPacket(char * messageBuffer, int numBytes){
 
 void handleTimeout(){
 
-  printDebug("handleTimeout fired");
+  perror("handleTimeout fired");
   /*if (processState == TOKEN_SENT){
     // resend token
         printDebug("timeout fired, resending token");

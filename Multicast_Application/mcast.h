@@ -1,14 +1,14 @@
 #include "net_include.h"
 #include "recv_dbg.h"
 
-#define WINDOW_SIZE 1000
+#define WINDOW_SIZE 10000
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 330
 #define SEND_WINDOW_SIZE 500
-#define MAX_MESSAGE 50
+#define MAX_MESSAGE 30
 #define MAX_RAND 1000000
 #define MAX_PROC 10
-#define NUM_TOKEN_RESEND 50
+#define NUM_TOKEN_RESEND 20
 
 //#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
 #define MCAST_ADDR  225 << 24 | 1 << 16 | 2 << 8 | 120 /* (225.1.2.120) */ 
