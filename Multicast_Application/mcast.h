@@ -5,7 +5,7 @@
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
 #define MAX_NAK 330
 #define SEND_WINDOW_SIZE 500
-#define MAX_MESSAGE 30
+#define MAX_MESSAGE 160
 #define MAX_RAND 1000000
 #define MAX_PROC 10
 #define NUM_TOKEN_RESEND 20

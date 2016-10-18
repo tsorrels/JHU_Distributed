@@ -595,6 +595,7 @@ int processStartPacket(char * messageBuffer, int numBytes){
     returnValue = 0;
     gettimeofday(&start, NULL);
     if (numBytes == sizeof(packet) && packetPtr->header.type == START){
+        recv_dbg_init( lossRate, machineIndex ); 
         returnValue = 1;
     }
     if (processState == WAITING_START &&
@@ -754,7 +755,6 @@ int main (int argc, char ** argv)
 	    printDebug("dubug set");
 	}
     }
-    recv_dbg_init( lossRate, machineIndex );
     initializeGlobalWindow();
     initializeSenderWindow();
     startMessageReceived = 0;
