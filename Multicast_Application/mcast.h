@@ -8,11 +8,13 @@
 #define MAX_MESSAGE 50
 #define MAX_RAND 1000000
 #define MAX_PROC 10
+#define NUM_TOKEN_RESEND 50
 
-#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
+//#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
+#define MCAST_ADDR  225 << 24 | 1 << 16 | 2 << 8 | 120 /* (225.1.2.120) */ 
 
-#define TOKEN_RESEND_TIMER 1000 /* in us */
-#define AWAITING_TOKEN_TIMER 10000 /* in us */
+#define TOKEN_RESEND_TIMER 100000 /* in us */
+#define AWAITING_TOKEN_TIMER 1000000 /* in us */
 
 typedef enum {
     DATA,

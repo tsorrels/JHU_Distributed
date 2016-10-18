@@ -452,6 +452,7 @@ packet * buildToken(int highestSeqNumSent, int newAck, int rand_num){
 }
 
 void sendToken(packet * token, int has_address){
+    int i;
     struct sockaddr_in send_addr;
     if(!has_address){
         //multicast token
@@ -460,7 +461,10 @@ void sendToken(packet * token, int has_address){
     }
     else{
         //unicast token
-        printDebug("Unicasting token");
+      
+        //printDebug("Unicasting token");
+	if (debug)
+	  printf("Unicasting token to %d\n", globalWindow.sendto_ip);
         send_addr.sin_family = AF_INET;
         send_addr.sin_addr.s_addr = globalWindow.sendto_ip; 
         send_addr.sin_port = htons(PORT);
@@ -468,8 +472,11 @@ void sendToken(packet * token, int has_address){
     /*sendto(mcastConnection.fd, token, sizeof(packet), 0,
 	 (struct sockaddr*) &mcastConnection.send_addr,
 	   sizeof(mcastConnection.send_addr));*/
-    sendto(mcastConnection.fd, token, sizeof(packet), 0,
-	 (struct sockaddr *)&send_addr, sizeof(send_addr));
+
+    for (i = 0 ; i < NUM_TOKEN_RESEND ; i ++){
+        sendto(mcastConnection.fd, token, sizeof(packet), 0,
+	       (struct sockaddr *)&send_addr, sizeof(send_addr));
+    }
 }
 
 
@@ -487,15 +494,19 @@ void processToken(packet * recvdPacket){
 
     tokenPayload = (token_payload *) recvdPacket->data;
     if (debug)
-      printf("Received token addressed to %d, ack = %d, num_nacks = %d, seq_num = %d, num_shutdown = %d\n", 
-        tokenPayload->address, tokenPayload->ack, tokenPayload->num_nak, tokenPayload->seq_num, tokenPayload->num_shutdown);
+        printf("Received token addressed to %d, ack = %d, num_nacks = %d, seq_num = %d, num_shutdown = %d\n", 
+        tokenPayload->address, tokenPayload->ack, tokenPayload->num_nak,
+	     tokenPayload->seq_num, tokenPayload->num_shutdown);
     
-    if((!globalWindow.has_address)&&(tokenPayload->host_num[(machineIndex%numProcesses)])){
-        globalWindow.sendto_ip = tokenPayload->host_num[(machineIndex%numProcesses)];
-        globalWindow.has_address = 1;
-        if(debug){
-            printf("Received the address for unicast %d\n", globalWindow.sendto_ip);
-        }
+    if((!globalWindow.has_address) &&
+       (tokenPayload->host_num[(machineIndex%numProcesses)])){
+          globalWindow.sendto_ip =
+	    tokenPayload->host_num[(machineIndex%numProcesses)];
+	  globalWindow.has_address = 1;
+	  if(debug){
+              printf("Received the address for unicast %d\n",
+		     globalWindow.sendto_ip);
+	  }
     }
 
     if (tokenPayload->address != machineIndex ){
@@ -538,7 +549,8 @@ void processToken(packet * recvdPacket){
         printf("Number of sent packets = %d, Number of packets to send = %d\n",senderWindow.num_sent_packets,numPacketsToSend);
     }
 
-    /* if done sending messages and delivered all messages till the highest seq num, transition to FINISHED and mark token */
+    /* if done sending messages and delivered all messages till the highest 
+     * seq num, transition to FINISHED and mark token */
     if (senderWindow.num_sent_packets == numPacketsToSend &&
         processState != FINISHED &&
         globalWindow.window_start == (tokenPayload->seq_num+1)){
@@ -677,7 +689,7 @@ int processPacket(char * messageBuffer, int numBytes){
 
 void handleTimeout(){
 
-  //printDebug("handleTimeout fired");
+  printDebug("handleTimeout fired");
   /*if (processState == TOKEN_SENT){
     // resend token
         printDebug("timeout fired, resending token");
