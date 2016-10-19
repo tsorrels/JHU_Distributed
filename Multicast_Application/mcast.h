@@ -1,17 +1,20 @@
 #include "net_include.h"
 #include "recv_dbg.h"
 
-#define WINDOW_SIZE 1000
+#define WINDOW_SIZE 10000
 #define PAYLOAD_SIZE (1400-sizeof(packet_header))
-#define MAX_NAK 340
+#define MAX_NAK 330
 #define SEND_WINDOW_SIZE 500
-#define MAX_MESSAGE 50
+#define MAX_MESSAGE 160
 #define MAX_RAND 1000000
+#define MAX_PROC 10
+#define NUM_TOKEN_RESEND 20
 
-#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
+//#define MCAST_ADDR 225 << 24 | 0 << 16 | 1 << 8 | 1
+#define MCAST_ADDR  225 << 24 | 1 << 16 | 2 << 8 | 120 /* (225.1.2.120) */ 
 
-#define TOKEN_RESEND_TIMER 1000 /* in us */
-#define AWAITING_TOKEN_TIMER 10000 /* in us */
+#define TOKEN_RESEND_TIMER 100000 /* in us */
+#define AWAITING_TOKEN_TIMER 1000000 /* in us */
 
 typedef enum {
     DATA,
@@ -55,6 +58,7 @@ typedef struct token_payload_type {
     int num_nak;
     int nak[MAX_NAK];
     int num_shutdown;
+    int host_num[MAX_PROC];
 } token_payload;
 
 
@@ -81,6 +85,8 @@ typedef struct gloal_window_type {
     int window_end; /* sequence number */
     packet_buffer packets[WINDOW_SIZE];
     int previous_ack;
-    int has_token;
+    int has_address;
+    int sendto_ip;
+    int my_ip;
     FILE *fd;
 } global_window;
