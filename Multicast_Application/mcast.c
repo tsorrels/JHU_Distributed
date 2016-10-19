@@ -7,19 +7,14 @@ connection mcastConnection;
 
 sender_window senderWindow;
 global_window globalWindow;
-int debug;
+int debug;                          // This is to switch the debug prints on and off
 process_state_type processState;
 struct timeval diff,end,start;
-
 
 int numPacketsToSend;
 int machineIndex; 
 int numProcesses;
 int lossRate;
-
-
-
-
 
 void sendPacket(int seq_num);
 void resendNak(int seq_num);
@@ -44,6 +39,8 @@ struct timeval diffTime(struct timeval left, struct timeval right)
     return diff;
 }
 
+/* This closes the connection after flushing the tailing output to the file
+ * and printing out the total time taken for the transfer */
 void closeConnection(){
   fflush(globalWindow.fd);
   gettimeofday(&end, NULL);
@@ -52,13 +49,16 @@ void closeConnection(){
   exit(0);
 }
 
+// Custom print method for debugging
 void printDebug(char* message){
     if (debug){
 	printf("%s\n", message);
     }	
 }
 
-
+/* This initializes the global_window members,
+ * opens a file for writing and stores the 
+ * machine's address in the my_ip member */
 void initializeGlobalWindow(){
     struct hostent h_ent;
     struct hostent *p_h_ent;
@@ -70,10 +70,9 @@ void initializeGlobalWindow(){
     globalWindow.window_start = 0;
     globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
-        globalWindow.packets[i].received = 0;
-	//globalWindow.packets[i].size = -1;
-	//globalWindow.packets[i].seq_num = i;      
+        globalWindow.packets[i].received = 0;    
     }
+
     globalWindow.previous_ack = -1;
     globalWindow.has_address = 0;
     globalWindow.sendto_ip = 0;
@@ -93,8 +92,8 @@ void initializeGlobalWindow(){
 
 }
 
+// This initializes the sender_window members
 void initializeSenderWindow(){
-  //int i;
     token_payload *payload;
     senderWindow.window_start = 0;
     senderWindow.window_end = 0;
@@ -105,25 +104,13 @@ void initializeSenderWindow(){
 
 }
 
-
-/* check to see if packet is in window, return 1 for true */
-/*int packetInWindow(packet * recvdPacket){
-
-
-    return 0;
-}*/
-
 /* places packet into global window */ 
 void processDataPacket(packet * recvdPacket){
   int seq_num;
 
   seq_num = recvdPacket->header.seq_num;
-    // check to see if in window
-
-  /*if (debug)
-    printf("Received seq_num %d\n", seq_num);*/
-
-
+    
+  // check to see if packet is in window
   if (seq_num < globalWindow.window_start ||
       seq_num > globalWindow.window_end){
     if (debug)
@@ -167,19 +154,14 @@ int min (int left, int right){
   }
 }
 
-
-
+/* Writes packet to the file */
 void deliverPacket(packet * deliveredPacket){
-  
-  if(debug){
     fprintf(globalWindow.fd,"%2d, %8d, %8d\n",deliveredPacket->header.proc_num,
-	    deliveredPacket->header.seq_num, 
+	    deliveredPacket->header.seq_num,
 	    deliveredPacket->header.rand_num);
-    //fflush(globalWindow.fd);
-  }
 }
 
-/* delivers packet in global buffer up min of the ack received on the token
+/* delivers packet to the file present in global buffer upto min of the ack received on the token
  * and the ack previously loaded on the token; returns the seq_num + 1 of
  * the packets wrote, which is the new start of the global window */
 int clearGlobalWindow(int tokenAck){
@@ -187,10 +169,8 @@ int clearGlobalWindow(int tokenAck){
   int i;
   int prevAck;
 
-  //printDebug("clearing global window");
   prevAck = min(globalWindow.previous_ack, tokenAck);
-
-  
+ 
   for (i = globalWindow.window_start ; i <= prevAck ; i ++){
     if(debug)
       printf("clearing seq_num = %d\n",
@@ -203,15 +183,14 @@ int clearGlobalWindow(int tokenAck){
 
   if (debug)
     printf("sliding global window, new start = %d\n", i);
-  //printDebug("returning from clearGlobalWindow");
 
   return i;  
 }
 
-
+/* Clears the window upto the sequence num that is received by all the processes
+ * and shifts the window_start accordingly */
 void slideGlobalWindow(packet * token){
 
-  //int consecutiveAck;
   token_payload * tokenPayload;
   int clearedToSeqNum;
 
@@ -220,20 +199,15 @@ void slideGlobalWindow(packet * token){
   printDebug("sliding window");
   /* clear window and deliver data */
   clearedToSeqNum = clearGlobalWindow(tokenPayload->ack);
-
-  //printDebug("cleared global window");
-
   
   /* update window */
   globalWindow.window_start = clearedToSeqNum;
   globalWindow.window_end = globalWindow.window_start + WINDOW_SIZE - 1;
   /* -1 because window_end identifies the packet with the highest 
-   * sequence number that will fit in the window */
-
-  //consecutiveAck = getConsecutiveAck();  
+   * sequence number that will fit in the window */  
 }
 
-
+/* Iterates over all the nacks in the token and calls resendNak for resending each Nack */
 void resendNaks(packet * recvdPacket){
   int i;
   token_payload * payload;
@@ -252,6 +226,7 @@ void resendNaks(packet * recvdPacket){
   }    
 }
 
+// Multicasts the Nack
 void resendNak(int seq_num){
     packet * sendingPacket;
 
@@ -259,7 +234,7 @@ void resendNak(int seq_num){
       printf("resending nak %d\n", seq_num);
     sendingPacket = &globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes;
     
-    //send
+    //multicast the nack
     sendto(mcastConnection.fd, sendingPacket, sizeof(packet), 0,
 	 (struct sockaddr*) &mcastConnection.send_addr,
 	   sizeof(mcastConnection.send_addr));
@@ -270,15 +245,11 @@ void sendPacket(int seq_num){
 
     // stamp sequence number
     packet * sendingPacket;
-
-
-    /*if (debug)
-      printf("sending packet seq_num =  %d\n", seq_num);*/
     
     sendingPacket = &(senderWindow.packets[senderWindow.window_start]);
     sendingPacket->header.seq_num = seq_num;
   
-    //send
+    //multicast the packet
     sendto(mcastConnection.fd, sendingPacket, sizeof(packet), 0,
 	 (struct sockaddr*) &mcastConnection.send_addr,
 	   sizeof(mcastConnection.send_addr));
@@ -289,10 +260,7 @@ void sendPacket(int seq_num){
     if (debug)
       printf("sending packet seq_num =  %d\n", globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num);
     globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
-    //globalWindow.window_end ++;
 
-    
-    //clear buffer?
     senderWindow.window_start = (senderWindow.window_start + 1)
       % SEND_WINDOW_SIZE ;
 
@@ -300,30 +268,26 @@ void sendPacket(int seq_num){
 }
 
 /* takes ARU/cumulative ack from token 
- * sends up to the group cumulative ack + MAX_MESSAGE 
+ * sends until the MAX_MESSAGE limit is reached, or
+ * globalWindow's window_end is reached, or
+ * limit of total number of built packets is reached
  * returns sequence number of last packet sent*/
 int sendPackets(int ack, int seq_num){
     int i;
     i = seq_num + 1;
     while (
-	   //i <= (ack + WINDOW_SIZE) &&
 	   i <= globalWindow.window_end &&
 	   i <= seq_num + MAX_MESSAGE &&
 	   senderWindow.num_sent_packets < senderWindow.num_built_packets){
         sendPacket(i);
 	i ++;
-    }
-
-    
+    }    
     return i -1;
 }
 
 int newRandomNumber(){
-
-
   return rand() % MAX_RAND + 1;
 }
-
 
 /* this method overwrites the passed address in the sender_window */
 void buildPacket(packet * packetAddress){
@@ -344,7 +308,6 @@ void craftPackets(){
   	    printDebug("built max packets");
 	    break;
         }
-	//newPacket = buildPacket()
 	buildPacket(&senderWindow.packets[senderWindow.num_built_packets %
 					 SEND_WINDOW_SIZE]);
         senderWindow.window_end =
