@@ -64,10 +64,10 @@ void initializeGlobalWindow(){
     struct hostent h_ent;
     struct hostent *p_h_ent;
     int i, host_num, max_len = 80;
-    char fileName[] = "file_00";
+    char fileName[] = "0.out";
     char my_name[max_len];
     
-    fileName[6] = (machineIndex + 48);
+    fileName[0] = (machineIndex + 48);
     globalWindow.window_start = 0;
     globalWindow.window_end = WINDOW_SIZE - 1;
     for (i = 0 ; i < WINDOW_SIZE ; i ++){
