@@ -7,7 +7,7 @@ connection mcastConnection;
 
 sender_window senderWindow;
 global_window globalWindow;
-int debug;                          // This is to switch the debug prints on and off
+int debug;        // This is to switch the debug prints on and off
 process_state_type processState;
 struct timeval diff,end,start;
 
@@ -45,11 +45,12 @@ void closeConnection(){
   fflush(globalWindow.fd);
   gettimeofday(&end, NULL);
   diff = diffTime(end,start);
-  printf("Total time taken for transfer = %lf seconds\n",(diff.tv_sec+(diff.tv_usec)/1000000.0));
+  printf("Total time taken for transfer = %lf seconds\n",
+	 (diff.tv_sec+(diff.tv_usec)/1000000.0));
   exit(0);
 }
 
-// Custom print method for debugging
+/* Custom print method for debugging */
 void printDebug(char* message){
     if (debug){
 	printf("%s\n", message);
@@ -92,7 +93,7 @@ void initializeGlobalWindow(){
 
 }
 
-// This initializes the sender_window members
+/* This initializes the sender_window members */
 void initializeSenderWindow(){
     token_payload *payload;
     senderWindow.window_start = 0;
@@ -124,7 +125,8 @@ void processDataPacket(packet * recvdPacket){
     globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
     if (debug)
     printf("Received seq_num %d stored at index %d\n", 
-        globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num, seq_num % WINDOW_SIZE);
+      globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num, 
+	seq_num % WINDOW_SIZE);
 
   }
 }
@@ -161,7 +163,8 @@ void deliverPacket(packet * deliveredPacket){
 	    deliveredPacket->header.rand_num);
 }
 
-/* delivers packet to the file present in global buffer upto min of the ack received on the token
+/* delivers packet to the file present in global buffer upto min of the ack 
+ * received on the token
  * and the ack previously loaded on the token; returns the seq_num + 1 of
  * the packets wrote, which is the new start of the global window */
 int clearGlobalWindow(int tokenAck){
@@ -207,7 +210,8 @@ void slideGlobalWindow(packet * token){
    * sequence number that will fit in the window */  
 }
 
-/* Iterates over all the nacks in the token and calls resendNak for resending each Nack */
+/* Iterates over all the nacks in the token and calls resendNak for 
+ * resending each Nack */
 void resendNaks(packet * recvdPacket){
   int i;
   token_payload * payload;
@@ -226,7 +230,7 @@ void resendNaks(packet * recvdPacket){
   }    
 }
 
-// Multicasts the Nack
+/* Multicasts the Nack */
 void resendNak(int seq_num){
     packet * sendingPacket;
 
@@ -258,7 +262,8 @@ void sendPacket(int seq_num){
     memcpy(&(globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes),
 	   sendingPacket, sizeof(packet));
     if (debug)
-      printf("sending packet seq_num =  %d\n", globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num);
+      printf("sending packet seq_num =  %d\n", 
+       globalWindow.packets[seq_num % WINDOW_SIZE].packet_bytes.header.seq_num);
     globalWindow.packets[seq_num % WINDOW_SIZE].received = 1;
 
     senderWindow.window_start = (senderWindow.window_start + 1)
@@ -320,7 +325,8 @@ void craftPackets(){
 }
 
 /* Calculates the new ack that the process will write to the token
- * based on the local consecutiveAck, current tokenAck and current token seq_num */
+ * based on the local consecutiveAck, current tokenAck and current token 
+ * seq_num */
 int getNewAck(int tokenAck, int seq_num){
 
   int consecutiveAck;
@@ -395,7 +401,8 @@ packet * buildToken(int highestSeqNumSent, int newAck, int rand_num){
 
     newToken->header.type = TOKEN;
 
-    // rand_num field inside the token is used to discard the rebroadcasted duplicate tokens
+    /* rand_num field inside the token is used to discard the 
+     * rebroadcasted duplicate tokens */
     if(rand_num == -1)
         newToken->header.rand_num = 1;
     else
@@ -411,7 +418,7 @@ packet * buildToken(int highestSeqNumSent, int newAck, int rand_num){
     return newToken;
 }
 
-// Sends the token over the network
+/* Sends the token over the network */
 void sendToken(packet * token, int has_address){
     int i;
     struct sockaddr_in send_addr;
@@ -430,7 +437,7 @@ void sendToken(packet * token, int has_address){
         send_addr.sin_addr.s_addr = globalWindow.sendto_ip; 
         send_addr.sin_port = htons(PORT);
     }
-    // sends the token NUM_TOKEN_RESEND times to reduce the chances of token drop
+    //sends the token NUM_TOKEN_RESEND times to reduce the chances of token drop
     for (i = 0 ; i < NUM_TOKEN_RESEND ; i ++){
         sendto(mcastConnection.fd, token, sizeof(packet), 0,
 	       (struct sockaddr *)&send_addr, sizeof(send_addr));
@@ -490,7 +497,8 @@ void processToken(packet * recvdPacket){
     
     newAck = getNewAck(tokenPayload->ack, tokenPayload->seq_num);
     
-    newToken = buildToken(highestSeqNumSent, newAck, recvdPacket->header.rand_num);
+    newToken = buildToken(highestSeqNumSent, newAck, 
+			  recvdPacket->header.rand_num);
 
     newTokenPayload = (token_payload *)newToken->data;
 
@@ -525,14 +533,14 @@ void processToken(packet * recvdPacket){
     }
 
     /* if all the processes are done sending and all processes have delivered
-     * packets till the highest seq num in the token then multicast FIN packet */
+     * packets till the highest seq num in token then multicast FIN packet */
     else if(tokenPayload -> num_shutdown == numProcesses &&
 	    prev_ack == tokenPayload->seq_num){
 
         /* change token to a FIN packet */
         newToken->header.type = FIN;
         printDebug("Sending FIN token");
-        /* multicasts the FIN packet 50 times to reduce the chances of packet loss */
+        /* multicasts the FIN packet 50 times to reduce chance of packet loss */
         for(k = 0;k < 50;k++)
             sendToken(newToken, 0);
     }
@@ -619,12 +627,13 @@ int processPacket(char * messageBuffer, int numBytes){
     return timerValue;
 }
 
-// Resends the previous token in case when timeout fires
+/* Resends the previous token in case when timeout fires */
 void handleTimeout(){
 
-  perror("handleTimeout fired");
+    printDebug("handleTimeout fired");
     token_payload *payload;
     payload = (token_payload *)senderWindow.previous_token.data;
+    // check to see whether this process has a previously stored/sent token
     if(payload->address != -1)
         sendToken(&senderWindow.previous_token, globalWindow.has_address);
 }
@@ -707,6 +716,7 @@ int main (int argc, char ** argv)
     }
     /******* END SET UP MCAST RECEIVE SOCKET ********/
 
+
     /******* BEGIN SET UP MCAST SEND SOCKET ********/
     sockSendMcast = socket(AF_INET, SOCK_DGRAM, 0); /* Socket for sending */
     if (sockSendMcast < 0) {
@@ -728,8 +738,8 @@ int main (int argc, char ** argv)
     mcastConnection.fd = sockSendMcast;
 
     memcpy(&mcastConnection.send_addr, &send_addr, sizeof(struct sockaddr_in));
-
     /******* END SET UP MCAST SEND SOCKET ********/
+
 
     if (debug)
       printf("mcastConnection.fd = %d\n", mcastConnection.fd);
@@ -750,35 +760,27 @@ int main (int argc, char ** argv)
     {
         timeout.tv_sec = 10;
         timeout.tv_usec = 0;
-
 	temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
-			      &dummy_mask
-			      , &timeout
-			      );
-
-    if (numReadyFDs > 0) {
-
+			      &dummy_mask, &timeout);
+	if (numReadyFDs > 0) {	    
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
                 numBytesRead = recv( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
-
-        if(numBytesRead > 0)
-            startMessageReceived = processStartPacket(mess_buf, 
-							  numBytesRead);
+		if(numBytesRead > 0)
+		    startMessageReceived = processStartPacket(mess_buf, 
+							      numBytesRead);
 
 		if (startMessageReceived == 1){
 		    break;
 		}
 	    }
 	}
-
 	else{
 	  printf(".");
 	  fflush(0);
 	}
     }
-
     printDebug("Received start message, continuing to event loop");
 
 
@@ -788,14 +790,12 @@ int main (int argc, char ** argv)
 
     for (;;)
     {
-
         temp_mask = mask;
 	numReadyFDs = select( FD_SETSIZE, &temp_mask, &dummy_mask, 
 			      &dummy_mask, &timeout);
 
         if (numReadyFDs > 0) {
 	    if ( FD_ISSET( sockRecvMcast, &temp_mask) ) {
-
                 numBytesRead = recv_dbg( sockRecvMcast, mess_buf, 
 				     sizeof(packet), 0 );
             if(numBytesRead > 0)
@@ -807,6 +807,5 @@ int main (int argc, char ** argv)
 	    handleTimeout();
 	}
     }
-
     return 0;
 }

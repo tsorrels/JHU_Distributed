@@ -11,8 +11,6 @@ int main (int argc, char ** argv)
     int                numBytesSent;
     
     /******* BEGIN SET UP MCAST SEND SOCKET ********/
-    //mcast_addr = 225 << 24 | 1 << 16 | 2 << 8 | 120; /* (225.1.2.120) */
-    //mcast_addr = 225 << 24 | 0 << 16 | 1 << 8 | 1; /* (225.0.1.1) */
     mcast_addr = MCAST_ADDR;
     
     sockSendMcast = socket(AF_INET, SOCK_DGRAM, 0); /* Socket for sending */
@@ -39,8 +37,6 @@ int main (int argc, char ** argv)
     startPacket->header.type = START;
 
     printf("Sending start packet\n");
-
-    //printf("size of packet is %d\n", sizeof(startPacket));
     
     /* send start message to mcast address*/
     numBytesSent = sendto(sockSendMcast, startPacket, sizeof(packet), 0, 
