@@ -29,8 +29,7 @@ static  int     To_exit = 0;
 static	void	Usage( int argc, char *argv[] );
 static  void    Print_help();
 static  void	Bye();
-
-
+static	void	Read_message();
 
 
 
@@ -52,10 +51,6 @@ int main(int argc, char ** argv){
     
     test_timeout.sec = 5;
     test_timeout.usec = 0;
-
-
-
-
 
 
     /* initialize */
@@ -88,11 +83,14 @@ int main(int argc, char ** argv){
     printf("User: connected to %s with private group %s\n", Spread_name, 
 	   Private_group );
 
+    E_init();
+
+    E_attach_fd( Mbox, READ_FD, Read_message, 0, NULL, HIGH_PRIORITY );
+
+    E_handle_events();
 
     return 0;
 }
-
-
 
 
 
@@ -132,6 +130,7 @@ static  void    Print_help()
             "\t[-r ]    : use random user name");
     exit( 0 );
 }
+
 static  void	Bye()
 {
     To_exit = 1;
@@ -141,4 +140,10 @@ static  void	Bye()
     SP_disconnect( Mbox );
 
     exit( 0 );
+}
+
+
+static	void	Read_message()
+{
+
 }
