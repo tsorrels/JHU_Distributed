@@ -1,11 +1,13 @@
 #include "sp.h"
-
+#include "mcast.h"
 
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <time.h>
+#include <sys/time.h>
 
 #define MAX_MESSLEN     102400
 #define MAX_VSSETS      10
@@ -14,9 +16,15 @@
 
 
 int debug = 0;
+int num_procs;
+int proc_index;
+int num_messages;
+int message_index = 1;
+FILE *fd;
 
+window_entry * global_window;
 
-
+message send_message_buffer;
 
 
 /* from class_user.c example code */
@@ -38,6 +46,10 @@ static  void	Bye();
 static	void	Read_message();
 
 
+int newRandomNumber(){
+    return rand() % MAX_RAND + 1;
+}
+
 
 /* Custom print method for debugging */
 void printDebug(char* message){
@@ -45,6 +57,7 @@ void printDebug(char* message){
 	printf("%s\n", message);
     }	
 }
+
 
 
 
@@ -60,18 +73,8 @@ int main(int argc, char ** argv){
 
 
     /* initialize */
-    if (argc == 5){
-	if (atoi(argv[4]) == 1){
-	    debug = 1;
-	    printDebug("dubug set");
-	}
-    }
 
     /* I think this code is covered in the Usage() funciton call below
-    if (argc < 4){
-	printf("Usage: mcast <num_of_messages> <process_index> "); 
-	printf("<num_of_processes> [debug]\n");
-	exit(0);
 	}*/
     
 
@@ -98,12 +101,49 @@ int main(int argc, char ** argv){
     return 0;
 }
 
+void initialize(int argc, char ** argv){
+    int i;
+
+    if (argc < 4){
+	printf("Usage: mcast <num_of_messages> <process_index> "); 
+	printf("<num_of_processes> [debug]\n");
+	exit(0);
+    }    
+
+    if (argc == 5){
+	if (atoi(argv[4]) == 1){
+	    debug = 1;
+	    printDebug("dubug set");
+	}
+    }
+
+    srand (time(NULL));
+
+    proc_index = atoi(argv[2]);
+    num_procs = atoi(argv[3]);
+    num_messages = atoi(argv[1]);
+    sprintf( User, "%s.out", argv[2] );
+    sprintf( Spread_name, "4803");
+
+    fd = fopen(User, "w"); 
+
+    global_window = malloc (sizeof(window_entry) * num_procs);
+    
+    for (i = 0 ; i < num_procs ; i ++){
+	global_window[i].proc_id = i + 1;
+	global_window[i].FIN = 0;
+	global_window[i].seq_num = -1;
+    }
+
+}
+
 
 
 static	void	Usage(int argc, char *argv[])
 {
     sprintf( User, "user" );
     sprintf( Spread_name, "4803");
+    
     while( --argc > 0 )
     {
 	argv++;
@@ -145,14 +185,88 @@ static  void	Bye()
 
     SP_disconnect( Mbox );
 
-    exit( 0 );
+exit( 0 );
 }
 
+
+
+void sendNewMessage(int FIN){
+    int i, ret; 
+
+    message_index ++;
+
+    send_message_buffer.header.proc_num = proc_index;
+    send_message_buffer.header.seq_num = message_index;
+    send_message_buffer.header.rand_num = newRandomNumber();
+    send_message_buffer.header.FIN = FIN;
+    //TODO: Include multicast call
+/*
+    ret= SP_multigroup_multicast( Mbox, AGREED, num_groups, 
+				  (const char (*)[MAX_GROUP_NAME]) groups, 
+				  1, mess_len, mess );
+    if( ret < 0 ) 
+    {
+	SP_error( ret );
+	Bye();
+    }
+*/    
+}
+
+
+
+
+void sendMessages(){
+    int i;
+    int min_seq_num = message_index;
+    int num_messages_to_send = 0, num_fin = 0;
+
+    for (i = 0 ; i < num_procs ; i ++){
+	if (global_window[i].FIN != 1 && 
+	    global_window[i].seq_num < min_seq_num){
+	    min_seq_num = global_window[i].seq_num;
+	}
+        if(global_window[i].FIN == 1)
+	    num_fin ++;
+    }
+
+    if(global_window[proc_index - 1].FIN){
+	if(num_fin == num_procs){
+	    fflush(fd);
+	    exit(0);
+	}
+	return;
+    }
+    if(message_index == (num_messages - 1)){
+	sendNewMessage(1);
+    }	
+
+    
+    num_messages_to_send = min_seq_num + NUM_SEND_MESSAGE - message_index;
+
+    for (i = 0 ; i < num_messages_to_send && 
+        message_index < (num_messages - 1); i ++){
+	sendNewMessage(0); /* 0 means do not send FIN */
+    }      
+}
+
+void deliverMessage(char mess[])
+{
+    message *packet;
+    message_header *header;
+    packet = (message *)mess;
+    header = &packet->header;
+    if(header->FIN){
+	global_window[header->proc_num - 1].FIN = 1;
+	return;
+    }
+    fprintf(fd, "%2d, %8d, %8d\n", header->proc_num, header->seq_num,
+	    header->rand_num);
+}
 
 static	void	Read_message()
 {
 
-    static	char		 mess[MAX_MESSLEN];
+    static char		 mess[MAX_MESSLEN];
     char		 sender[MAX_GROUP_NAME];
     char		 target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
     membership_info  memb_info;
@@ -204,6 +318,8 @@ static	void	Read_message()
 	else if( Is_agreed_mess( service_type ) ) printf("received AGREED ");
 	else if( Is_safe_mess(   service_type ) ) printf("received SAFE ");
 	printf("message from %s, of type %d, (endian %d) to %d groups \n(%d bytes): %s\n",  sender, mess_type, endian_mismatch, num_groups, ret, mess );
+        deliverMessage(mess);
+        sendMessages();
     }else if( Is_membership_mess( service_type ) )
     {
 	ret = SP_get_memb_info( mess, service_type, &memb_info );
@@ -214,6 +330,8 @@ static	void	Read_message()
 	}
 	if     ( Is_reg_memb_mess( service_type ) )
 	{
+	    // num_groups loaded with number of members in group
+
 	    printf("Received REGULAR membership for group %s with %d members, where I am member %d:\n", sender, num_groups, mess_type );
 	    for( i=0; i < num_groups; i++ )
 		printf("\t%s\n", &target_groups[i][0] );
@@ -254,6 +372,15 @@ static	void	Read_message()
 	}else if( Is_caused_leave_mess( service_type ) ){
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
+	// num_groups loaded with number of members in group
+
+	/********************* CHECK MEMBERSHIP *************************/
+	if (num_groups == num_procs){
+	    /* BEGIN EXECUTION */
+            sendMessages();
+	}
+
+
     } else if ( Is_reject_mess( service_type ) )
     {
 	printf("REJECTED message from %s, of servicetype 0x%x messtype %d, (endian %d) to %d groups \n(%d bytes): %s\n",
