@@ -19,7 +19,7 @@ int debug = 0;
 int num_procs;
 int proc_index;
 int num_messages;
-int message_index = 1;
+int message_index = -1;
 FILE *fd;
 
 window_entry * global_window;
@@ -30,6 +30,8 @@ message send_message_buffer;
 /* from class_user.c example code */
 static	char	User[80];
 static  char    Spread_name[80];
+static  char	group[80];
+static  char	groups[10][MAX_GROUP_NAME];
 
 static  char    Private_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
@@ -39,7 +41,7 @@ static	unsigned int	Previous_len;
 static  int     To_exit = 0;
 
 
-
+static  void    initialize(int argc, char *argv[]);
 static	void	Usage( int argc, char *argv[] );
 static  void    Print_help();
 static  void	Bye();
@@ -78,7 +80,7 @@ int main(int argc, char ** argv){
 	}*/
     
 
-    Usage( argc, argv );
+    //Usage( argc, argv );
 
 
     /* connect to spread */
@@ -89,10 +91,18 @@ int main(int argc, char ** argv){
 	SP_error( ret );
 	Bye();
     }
+    initialize(argc, argv);
     printf("User: connected to %s with private group %s\n", Spread_name, 
 	   Private_group );
 
     E_init();
+
+    // Join group "abrahmb1tsorrel3"
+    sprintf( group, "abrahmb1tsorrel3" );
+    ret = SP_join( Mbox, group );
+    if( ret < 0 ) SP_error( ret );
+
+    sprintf(groups[0], "abrahmb1tsorrel3");
 
     E_attach_fd( Mbox, READ_FD, Read_message, 0, NULL, HIGH_PRIORITY );
 
@@ -191,7 +201,7 @@ exit( 0 );
 
 
 void sendNewMessage(int FIN){
-    int i, ret; 
+    int i, ret;
 
     message_index ++;
 
@@ -200,16 +210,16 @@ void sendNewMessage(int FIN){
     send_message_buffer.header.rand_num = newRandomNumber();
     send_message_buffer.header.FIN = FIN;
     //TODO: Include multicast call
-/*
-    ret= SP_multigroup_multicast( Mbox, AGREED, num_groups, 
+
+    ret= SP_multigroup_multicast( Mbox, AGREED_MESS, 1,
 				  (const char (*)[MAX_GROUP_NAME]) groups, 
-				  1, mess_len, mess );
+				  1, sizeof(message), (&send_message_buffer) );
     if( ret < 0 ) 
     {
 	SP_error( ret );
 	Bye();
     }
-*/    
+   
 }
 
 
@@ -232,7 +242,7 @@ void sendMessages(){
     if(global_window[proc_index - 1].FIN){
 	if(num_fin == num_procs){
 	    fflush(fd);
-	    exit(0);
+	    Bye();
 	}
 	return;
     }
@@ -249,7 +259,7 @@ void sendMessages(){
     }      
 }
 
-void deliverMessage(char mess[])
+void deliverMessage(char *mess)
 {
     message *packet;
     message_header *header;
