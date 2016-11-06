@@ -269,6 +269,7 @@ void deliverMessage(char *mess)
 	global_window[header->proc_num - 1].FIN = 1;
 	return;
     }
+    global_window[header->proc_num - 1].seq_num = header->seq_num;
     fprintf(fd, "%2d, %8d, %8d\n", header->proc_num, header->seq_num,
 	    header->rand_num);
 }
