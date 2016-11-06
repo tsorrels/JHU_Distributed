@@ -20,6 +20,7 @@ int num_procs;
 int proc_index;
 int num_messages;
 int message_index = -1;
+struct timeval diff,end,start;
 FILE *fd;
 
 window_entry * global_window;
@@ -60,6 +61,25 @@ void printDebug(char* message){
     }	
 }
 
+struct timeval diffTime(struct timeval left, struct timeval right)
+{
+    struct timeval diff;
+
+    diff.tv_sec  = left.tv_sec - right.tv_sec;
+    diff.tv_usec = left.tv_usec - right.tv_usec;
+
+    if (diff.tv_usec < 0) {
+        diff.tv_usec += 1000000;
+        diff.tv_sec--;
+    }
+
+    if (diff.tv_sec < 0) {
+        printf("WARNING: diffTime has negative result, returning 0!\n");
+        diff.tv_sec = diff.tv_usec = 0;
+    }
+
+    return diff;
+}
 
 
 
@@ -191,7 +211,10 @@ static  void	Bye()
 {
     To_exit = 1;
 
-    printf("\nBye.\n");
+    gettimeofday(&end, NULL);
+    diff = diffTime(end,start);
+    printf("Total time taken for transfer = %lf seconds\n",
+	 (diff.tv_sec+(diff.tv_usec)/1000000.0));
 
     SP_disconnect( Mbox );
 
@@ -297,7 +320,7 @@ static	void	Read_message()
     ret = SP_receive( Mbox, &service_type, sender, 100, &num_groups, 
 		      target_groups, &mess_type, &endian_mismatch, 
 		      sizeof(mess), mess );
-    printf("\n============================\n");
+    //printf("\n============================\n");
     if( ret < 0 ) 
     {
 	if ( (ret == GROUPS_TOO_SHORT) || (ret == BUFFER_TOO_SHORT) ) {
@@ -322,14 +345,14 @@ static	void	Read_message()
     if( Is_regular_mess( service_type ) )
     {
 	mess[ret] = 0;
-	if ( Is_unreliable_mess( service_type ) )printf("received UNRELIABLE ");
+	/*if ( Is_unreliable_mess( service_type ) )printf("received UNRELIABLE ");
 	else if( Is_reliable_mess(service_type ) ) printf("received RELIABLE ");
 	else if( Is_fifo_mess( service_type ) ) printf("received FIFO ");
 	else if( Is_causal_mess( service_type ) ) printf("received CAUSAL ");
 	else if( Is_agreed_mess( service_type ) ) printf("received AGREED ");
 	else if( Is_safe_mess(   service_type ) ) printf("received SAFE ");
 	printf("message from %s, of type %d, (endian %d) to %d groups \n(%d bytes): %s\n",  sender, mess_type, endian_mismatch, num_groups, ret, mess );
-        deliverMessage(mess);
+        */deliverMessage(mess);
         sendMessages();
     }else if( Is_membership_mess( service_type ) )
     {
@@ -388,6 +411,7 @@ static	void	Read_message()
 	/********************* CHECK MEMBERSHIP *************************/
 	if (num_groups == num_procs){
 	    /* BEGIN EXECUTION */
+            gettimeofday(&start, NULL);
             sendMessages();
 	}
 
@@ -399,8 +423,8 @@ static	void	Read_message()
     }else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 
 
-    printf("\n");
-    printf("User> ");
-    fflush(stdout);
+    //printf("\n");
+    //printf("User> ");
+    //fflush(stdout);
 
 }
