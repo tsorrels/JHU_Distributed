@@ -36,29 +36,18 @@ static  char	groups[10][MAX_GROUP_NAME];
 
 static  char    Private_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
-static	int	    Num_sent;
-static	unsigned int	Previous_len;
 
 static  int     To_exit = 0;
 
 
 static  void    initialize(int argc, char *argv[]);
-static	void	Usage( int argc, char *argv[] );
-static  void    Print_help();
+
 static  void	Bye();
 static	void	Read_message();
 
 
 int newRandomNumber(){
     return rand() % MAX_RAND + 1;
-}
-
-
-/* Custom print method for debugging */
-void printDebug(char* message){
-    if (debug){
-	printf("%s\n", message);
-    }	
 }
 
 struct timeval diffTime(struct timeval left, struct timeval right)
@@ -85,23 +74,10 @@ struct timeval diffTime(struct timeval left, struct timeval right)
 
 int main(int argc, char ** argv){
     int	ret;
-    int mver; 
-    int miver; 
-    int pver;
     sp_time test_timeout;
     
     test_timeout.sec = 5;
     test_timeout.usec = 0;
-
-
-    /* initialize */
-
-    /* I think this code is covered in the Usage() funciton call below
-	}*/
-    
-
-    //Usage( argc, argv );
-
 
     /* connect to spread */
     ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, Private_group, 
@@ -122,8 +98,6 @@ int main(int argc, char ** argv){
     ret = SP_join( Mbox, group );
     if( ret < 0 ) SP_error( ret );
 
-    sprintf(groups[0], "abrahmb1tsorrel3");
-
     E_attach_fd( Mbox, READ_FD, Read_message, 0, NULL, HIGH_PRIORITY );
 
     E_handle_events();
@@ -143,7 +117,6 @@ void initialize(int argc, char ** argv){
     if (argc == 5){
 	if (atoi(argv[4]) == 1){
 	    debug = 1;
-	    printDebug("dubug set");
 	}
     }
 
@@ -167,46 +140,6 @@ void initialize(int argc, char ** argv){
 
 }
 
-
-
-static	void	Usage(int argc, char *argv[])
-{
-    sprintf( User, "user" );
-    sprintf( Spread_name, "4803");
-    
-    while( --argc > 0 )
-    {
-	argv++;
-
-	if( !strncmp( *argv, "-u", 2 ) )
-	{
-	    if (argc < 2) Print_help();
-	    strcpy( User, argv[1] );
-	    argc--; argv++;
-	}else if( !strncmp( *argv, "-r", 2 ) )
-	{
-	    strcpy( User, "" );
-	}else if( !strncmp( *argv, "-s", 2 ) ){
-	    if (argc < 2) Print_help();
-	    strcpy( Spread_name, argv[1] ); 
-	    argc--; argv++;
-	}else{
-	    Print_help();
-	}
-    }
-}
-
-
-
-static  void    Print_help()
-{
-    printf( "Usage: spuser\n%s\n%s\n%s\n",
-            "\t[-u <user name>]  : unique (in this machine) user name",
-            "\t[-s <address>]    : either port or port@machine",
-            "\t[-r ]    : use random user name");
-    exit( 0 );
-}
-
 static  void	Bye()
 {
     To_exit = 1;
@@ -224,7 +157,7 @@ exit( 0 );
 
 
 void sendNewMessage(int FIN){
-    int i, ret;
+    int ret;
 
     message_index ++;
 
@@ -234,9 +167,8 @@ void sendNewMessage(int FIN){
     send_message_buffer.header.FIN = FIN;
     //TODO: Include multicast call
 
-    ret= SP_multigroup_multicast( Mbox, AGREED_MESS, 1,
-				  (const char (*)[MAX_GROUP_NAME]) groups, 
-				  1, sizeof(message), (&send_message_buffer) );
+    ret= SP_multicast( Mbox, AGREED_MESS,(const char *)group, 1, 
+                    sizeof(message), (const char *)(&send_message_buffer) );
     if( ret < 0 ) 
     {
 	SP_error( ret );
@@ -320,7 +252,6 @@ static	void	Read_message()
     ret = SP_receive( Mbox, &service_type, sender, 100, &num_groups, 
 		      target_groups, &mess_type, &endian_mismatch, 
 		      sizeof(mess), mess );
-    //printf("\n============================\n");
     if( ret < 0 ) 
     {
 	if ( (ret == GROUPS_TOO_SHORT) || (ret == BUFFER_TOO_SHORT) ) {
@@ -345,14 +276,7 @@ static	void	Read_message()
     if( Is_regular_mess( service_type ) )
     {
 	mess[ret] = 0;
-	/*if ( Is_unreliable_mess( service_type ) )printf("received UNRELIABLE ");
-	else if( Is_reliable_mess(service_type ) ) printf("received RELIABLE ");
-	else if( Is_fifo_mess( service_type ) ) printf("received FIFO ");
-	else if( Is_causal_mess( service_type ) ) printf("received CAUSAL ");
-	else if( Is_agreed_mess( service_type ) ) printf("received AGREED ");
-	else if( Is_safe_mess(   service_type ) ) printf("received SAFE ");
-	printf("message from %s, of type %d, (endian %d) to %d groups \n(%d bytes): %s\n",  sender, mess_type, endian_mismatch, num_groups, ret, mess );
-        */deliverMessage(mess);
+        deliverMessage(mess);
         sendMessages();
     }else if( Is_membership_mess( service_type ) )
     {
@@ -411,6 +335,7 @@ static	void	Read_message()
 	/********************* CHECK MEMBERSHIP *************************/
 	if (num_groups == num_procs){
 	    /* BEGIN EXECUTION */
+            printf("Starting Transfer\n");
             gettimeofday(&start, NULL);
             sendMessages();
 	}
@@ -421,10 +346,4 @@ static	void	Read_message()
 	printf("REJECTED message from %s, of servicetype 0x%x messtype %d, (endian %d) to %d groups \n(%d bytes): %s\n",
 	       sender, service_type, mess_type, endian_mismatch, num_groups, ret, mess );
     }else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
-
-
-    //printf("\n");
-    //printf("User> ");
-    //fflush(stdout);
-
 }
