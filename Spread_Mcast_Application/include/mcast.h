@@ -1,7 +1,7 @@
 #define PAYLOAD_SIZE 1200
 
 
-#define NUM_SEND_MESSAGE 25
+#define NUM_SEND_MESSAGE 15
 #define MAX_RAND 1000000
 
 

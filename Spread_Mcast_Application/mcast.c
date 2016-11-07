@@ -32,7 +32,6 @@ message send_message_buffer;
 static	char	User[80];
 static  char    Spread_name[80];
 static  char	group[80];
-static  char	groups[10][MAX_GROUP_NAME];
 
 static  char    Private_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
@@ -87,6 +86,7 @@ int main(int argc, char ** argv){
 	SP_error( ret );
 	Bye();
     }
+    // If spread does not work then no need to initialize.
     initialize(argc, argv);
     printf("User: connected to %s with private group %s\n", Spread_name, 
 	   Private_group );
