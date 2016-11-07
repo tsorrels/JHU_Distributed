@@ -13,8 +13,6 @@
 #define MAX_VSSETS      10
 #define MAX_MEMBERS     100
 
-
-
 int debug = 0;
 int num_procs;
 int proc_index;
@@ -154,8 +152,6 @@ static  void	Bye()
 exit( 0 );
 }
 
-
-
 void sendNewMessage(int FIN){
     int ret;
 
@@ -165,8 +161,7 @@ void sendNewMessage(int FIN){
     send_message_buffer.header.seq_num = message_index;
     send_message_buffer.header.rand_num = newRandomNumber();
     send_message_buffer.header.FIN = FIN;
-    //TODO: Include multicast call
-
+    //multicast the message to a single group.
     ret= SP_multicast( Mbox, AGREED_MESS,(const char *)group, 1, 
                     sizeof(message), (const char *)(&send_message_buffer) );
     if( ret < 0 ) 
@@ -178,13 +173,14 @@ void sendNewMessage(int FIN){
 }
 
 
-
-
 void sendMessages(){
     int i;
     int min_seq_num = message_index;
     int num_messages_to_send = 0, num_fin = 0;
 
+    /* Get the minimum sequence number sent by a process
+     * that has not finished sending. Also check how many
+     * processes have finished sending. */
     for (i = 0 ; i < num_procs ; i ++){
 	if (global_window[i].FIN != 1 && 
 	    global_window[i].seq_num < min_seq_num){
@@ -195,35 +191,49 @@ void sendMessages(){
     }
 
     if(global_window[proc_index - 1].FIN){
+        /* If this process has finished sending 
+         * and all other processes have finished sending,
+         * then exit. */
 	if(num_fin == num_procs){
 	    fflush(fd);
 	    Bye();
 	}
+        /* If there is at least one process that is still
+         * not done, then just return. */
 	return;
     }
+    /* If this process has send all its packets then
+     * send the FIN packet. */
     if(message_index == (num_messages - 1)){
 	sendNewMessage(1);
+        return;
     }	
 
-    
     num_messages_to_send = min_seq_num + NUM_SEND_MESSAGE - message_index;
 
+    /* If this process can send messages then send upto num_message_to_send
+     * messages. */
     for (i = 0 ; i < num_messages_to_send && 
         message_index < (num_messages - 1); i ++){
 	sendNewMessage(0); /* 0 means do not send FIN */
     }      
 }
 
+/* Process the received packet. */
 void deliverMessage(char *mess)
 {
     message *packet;
     message_header *header;
     packet = (message *)mess;
     header = &packet->header;
+    /* If the received packet is a FIN packet, then
+     * update the global_window. */
     if(header->FIN){
 	global_window[header->proc_num - 1].FIN = 1;
 	return;
     }
+    /* If the packet is normal packet, then update the
+     * global window and write to the file. */
     global_window[header->proc_num - 1].seq_num = header->seq_num;
     fprintf(fd, "%2d, %8d, %8d\n", header->proc_num, header->seq_num,
 	    header->rand_num);
@@ -276,6 +286,7 @@ static	void	Read_message()
     if( Is_regular_mess( service_type ) )
     {
 	mess[ret] = 0;
+        // Process the received message and send new messages accordingly.
         deliverMessage(mess);
         sendMessages();
     }else if( Is_membership_mess( service_type ) )
@@ -330,7 +341,6 @@ static	void	Read_message()
 	}else if( Is_caused_leave_mess( service_type ) ){
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
-	// num_groups loaded with number of members in group
 
 	/********************* CHECK MEMBERSHIP *************************/
 	if (num_groups == num_procs){
