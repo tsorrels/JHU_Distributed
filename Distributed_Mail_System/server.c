@@ -119,7 +119,7 @@ message * generateUpdate(char * mess){
     return updateMessage;
 }
 
-/* sends update and FREES memory of the update message */
+/* sends update to spread server_group */
 void sendUpdate(message * updateMessage){
     int ret;
 
@@ -152,8 +152,9 @@ void processRegularMessage(char * sender, int num_groups,
 	
 	// generate update
 	if (createUpdate){
-	    updateMessage = generateUpdate(mess);
-	    sendUpdate(updateMessage); //FREES memory of updateMessage		
+	    updateMessage = generateUpdate(mess); // mallocs a message
+	    sendUpdate(updateMessage);
+	    free (updateMessage); // frees update message		
 	}
 
     }
