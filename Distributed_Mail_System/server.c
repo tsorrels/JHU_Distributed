@@ -91,7 +91,6 @@ message * generateUpdate(char * mess){
     memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
 
 
-
     if (commandPtr->type == NEWUSERCMD){
 	updatePtr->type = NEWUSERMSG;
     }
@@ -122,8 +121,16 @@ message * generateUpdate(char * mess){
 
 /* sends update and FREES memory of the update message */
 void sendUpdate(message * updateMessage){
+    int ret;
 
-
+    ret= SP_multicast(Mbox, AGREED_MESS,(const char *)local_state.server_group,
+		      1, sizeof(message), (const char *)(updateMessage) );
+    if( ret < 0 ) 
+    {
+	perror("ERROR: failed to send update in sendUpdate");
+	SP_error( ret );
+	Bye();
+    }
 }
 
 
@@ -335,6 +342,8 @@ void initialize(int argc, char ** argv){
     }
 
     local_state.proc_ID = atoi(argv[1]);
+    sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
+
     sprintf( User, "Server%s", argv[1] );
     sprintf( Spread_name, "4803"); // TODO: pull this out to config file
 

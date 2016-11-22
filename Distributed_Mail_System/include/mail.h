@@ -155,6 +155,7 @@ typedef struct user_entry_type{
 /* State local to each server */
 typedef struct state_type{
     int proc_ID;
+    char server_group[MAX_GROUP_NAME];
     char private_group[MAX_GROUP_NAME];
     int updateIndex;
     user_entry users[MAX_USERS];
