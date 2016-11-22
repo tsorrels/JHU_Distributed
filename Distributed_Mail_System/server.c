@@ -104,7 +104,7 @@ void processRegularMessage(char * sender, int num_groups,
 	
 	// generate update
 	if (createUpdate){
-	    generateUpdate();
+	    generateUpdate(mess);
 	    sendUpdate();
 		
 	}

@@ -108,8 +108,8 @@ typedef struct update_buffer_type{
 } update_buffer;
 
 /* Structure to maintain latest update index from all processes */
-typedef struct update_vector_type{
-    int latest_update[NUM_SERVERS];
+typedef struct update_matrix_type{
+    int latest_update[NUM_SERVERS][NUM_SERVERS];
 } update_vector;
 
 
@@ -126,7 +126,6 @@ typedef struct email_type{
     int valid;
     char MESSAGE[MAX_MESSAGE_SIZE];
 } email;
-
 
 
 
@@ -150,7 +149,7 @@ typedef struct state_type{
     char private_group[MAX_GROUP_NAME];
     int updateIndex;
     user_entry users[MAX_USERS];
-    update_vector local_update_vector;
+    update_matrix local_update_matrix;
     update_buffer local_update_buffer;
     connection connections[MAX_CONNECTIONS];
 } state;
