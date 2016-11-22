@@ -91,7 +91,7 @@ void sendUpdate(){
 /* should this function return anything? */
 void processRegularMessage(char * sender, int num_groups, 
 			   char groups[][MAX_GROUP_NAME], 
-			   int16 *mess_type, char * mess){
+			   int16 mess_type, char * mess){
 
     int createUpdate = 0;
     
@@ -202,7 +202,7 @@ static	void	readSpreadMessage()
     if( Is_regular_mess( service_type ) )
     {
 	processRegularMessage(sender, num_groups, target_groups, 
-			      (int16 * )mess_type, mess);
+			      mess_type, mess);
 	//mess[ret] = 0;
         // Process the received message and send new messages accordingly.
         //deliverMessage(mess);
@@ -308,5 +308,8 @@ void init(){
 
 
 void Bye(){
+    printf("Exiting\n");
+    exit(0);
+
 
 }
