@@ -11,12 +11,30 @@
 #define MAX_UPDATE 1000
 #define SIZE_PRIVATE_GROUP 256 ///// can be set from spread header
 #define MAX_CONNECTIONS 50
+#define NUM_SERVERS 5
+#define PORT 18537
+
+#define TEST_TIMEOUT_SEC 5
+#define TEST_TIMEOUT_USEC 0
+
+
+#define SERVER_GROUP_NAME "abrahmb1tsorrel3servers"
+
+/* for spread */
+#define MAX_MESSLEN     102400
+#define MAX_VSSETS      10
+#define MAX_MEMBERS     100
+
+
+
+
+extern void loadState();
 
 /* System wide message types */
 typedef enum {
     COMMAND,
     UPDATE,
-    VECTOR,
+    MATRIX,
 } message_type;
 
 /* Update message types */
@@ -33,9 +51,9 @@ typedef enum {
     NEWUSERCMD,
     DELETEMAILCMD,
     READMAILCMD,
-    LISTMAILCMD,
-    CONNECTCMD,
-    SHOWMEMBERSHIPCMD,
+    LISTMAILCMD,	// does not modify state
+    CONNECTCMD,		// does not modify state
+    SHOWMEMBERSHIPCMD,	// does not modify state
 } command_type;
 
 /******* DRAFT **********/
@@ -63,10 +81,19 @@ typedef struct message_type{
 } message;
 
 
+
+typedef struct mail_id_type{
+    int procID;
+    int emailIndex; // global counter, can count emails or udpates
+} mail_id;
+
+
 /* Structure for update */
 typedef struct update_type{
     update_type type;
     int procID;
+    char user_name[MAX_USER_LENGTH];
+    mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];
 } update;
 
@@ -89,8 +116,9 @@ typedef struct update_vector_type{
 /* Email data type */
 typedef struct email_type{
     int read;
-    int procCreated;
-    int emailIndex;
+    mail_id mailID;
+    //int procCreated;
+    //int emailIndex;
     char from[MAX_USER_LENGTH];
     char to[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
@@ -118,8 +146,11 @@ typedef struct user_entry_type{
 
 /* State local to each server */
 typedef struct state_type{
+    int proc_ID;
+    char private_group[MAX_GROUP_NAME];
+
     user_entry users[MAX_USERS];
     update_vector local_update_vector;
     update_buffer local_update_buffer;
-    connection connections[MAX_CONNECTIONS] ;
+    connection connections[MAX_CONNECTIONS];
 } state;

@@ -12,8 +12,8 @@ all: server client
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
 
-server:  $(SP_LIBRARY_DIR)/libspread-core.a server.o
-	$(LD) -o $@ server.o  $(SP_LIBRARY_DIR)/libspread-core.a -ldl -lm -lrt -lnsl $(SP_LIBRARY_DIR)/libspread-util.a
+server:  $(SP_LIBRARY_DIR)/libspread-core.a server.o recover.o
+	$(LD) -o $@ server.o  recover.o $(SP_LIBRARY_DIR)/libspread-core.a -ldl -lm -lrt -lnsl $(SP_LIBRARY_DIR)/libspread-util.a
 
 
 client:  $(SP_LIBRARY_DIR)/libspread-core.a client.o
