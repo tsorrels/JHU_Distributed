@@ -88,6 +88,15 @@ typedef struct mail_id_type{
 } mail_id;
 
 
+/* Structure for command */
+typedef struct command_type{
+    command_type type;
+    char user_name[MAX_USER_LENGTH];
+    mail_id mailID;
+    char payload[UPDATE_PAYLOAD_SIZE];
+} command;
+
+
 /* Structure for update */
 typedef struct update_type{
     update_type type;

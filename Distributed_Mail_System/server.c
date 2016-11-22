@@ -73,7 +73,7 @@ int main (int argc, char ** argv)
 }
 
 
-void generateUpdate(){
+update * generateUpdate(char * mess){
 
 
 
@@ -94,7 +94,8 @@ void processRegularMessage(char * sender, int num_groups,
 			   int16 mess_type, char * mess){
 
     int createUpdate = 0;
-    
+    update * updatePtr;
+
     message * messagePtr;
     messagePtr= (message *) mess;
     if (messagePtr->header.type == COMMAND){
@@ -104,8 +105,8 @@ void processRegularMessage(char * sender, int num_groups,
 	
 	// generate update
 	if (createUpdate){
-	    generateUpdate(mess);
-	    sendUpdate();
+	    updatePtr = generateUpdate(mess);
+	    sendUpdate(updatePtr);
 		
 	}
 
