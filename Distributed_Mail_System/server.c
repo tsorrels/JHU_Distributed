@@ -72,16 +72,56 @@ int main (int argc, char ** argv)
     return 0;
 }
 
+/* generates an update message to send to other servers 
+ * returns a pointer to a full message */
+message * generateUpdate(char * mess){
+    command * commandPtr;
+    message * messagePtr;
+    message * updateMessage;
+    update * updatePtr;
 
-update * generateUpdate(char * mess){
+    messagePtr = (message *) mess;
+    commandPtr = (command *) messagePtr->payload;
+    updateMessage = malloc(sizeof(message));
+    updateMessage->header.type = UPDATE;
+
+    /* load message update with message type, procID, and user_name */
+    updatePtr = (update *) updateMessage->payload;
+    updatePtr->procID = local_state.proc_ID;
+    memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
 
 
 
+    if (commandPtr->type == NEWUSERCMD){
+	updatePtr->type = NEWUSERMSG;
+    }
+
+    else if (commandPtr->type == DELETEMAILCMD){
+	updatePtr->type = DELETEMAILMSG;
+	updatePtr->mailID = commandPtr->mailID;
+    }
+
+    else if (commandPtr->type == READMAILCMD){
+	updatePtr->type = READMAILMSG;
+	updatePtr->mailID = commandPtr->mailID;
+	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
+    }
+
+    else if (commandPtr->type == NEWMAILCMD){
+	updatePtr->type = NEWMAILMSG;
+	updatePtr->mailID = commandPtr->mailID;
+	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
+    }
+
+    else{
+	perror("ERROR: did not recognize command type in gnerateUpdate");	
+    }
     
+    return updateMessage;
 }
 
-
-void sendUpdate(){
+/* sends update and FREES memory of the update message */
+void sendUpdate(message * updateMessage){
 
 
 }
@@ -94,7 +134,7 @@ void processRegularMessage(char * sender, int num_groups,
 			   int16 mess_type, char * mess){
 
     int createUpdate = 0;
-    update * updatePtr;
+    message * updateMessage;
 
     message * messagePtr;
     messagePtr= (message *) mess;
@@ -105,9 +145,8 @@ void processRegularMessage(char * sender, int num_groups,
 	
 	// generate update
 	if (createUpdate){
-	    updatePtr = generateUpdate(mess);
-	    sendUpdate(updatePtr);
-		
+	    updateMessage = generateUpdate(mess);
+	    sendUpdate(updateMessage); //FREES memory of updateMessage		
 	}
 
     }
