@@ -119,7 +119,7 @@ typedef struct update_buffer_type{
 /* Structure to maintain latest update index from all processes */
 typedef struct update_matrix_type{
     int latest_update[NUM_SERVERS][NUM_SERVERS];
-} update_vector;
+} update_matrix;
 
 
 /* Email data type */
