@@ -161,10 +161,28 @@ void deleteMail(){
 
 }
 
+
+/* scan state for first invalid user entry and add user */
 void addUser(){
+    int i;
+    int index;
+
+    index = -1;
+
     if (debug)
 	printf("Adding user\n");
 
+    for (i = 0 ; i < MAX_USERS ; i ++){
+	if (local_state.users[i].valid == 0){
+	    index = i;
+	}
+    }
+
+    if (index != -1){
+	//sprintf(, "Server%s", argv[1] );
+ 	local_state.users[index].valid = 1;
+	
+    }
 
 }
 
