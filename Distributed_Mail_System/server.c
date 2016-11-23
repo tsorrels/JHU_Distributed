@@ -116,12 +116,18 @@ message * generateUpdate(char * mess){
 	perror("ERROR: did not recognize command type in gnerateUpdate");	
     }
     
+    if (debug)
+	printf("generated update type %d\n", updatePtr->type);
+
     return updateMessage;
 }
 
 /* sends update to spread server_group */
 void sendUpdate(message * updateMessage){
     int ret;
+
+    if (debug)
+	printf("sending update\n");
 
     ret= SP_multicast(Mbox, AGREED_MESS,(const char *)local_state.server_group,
 		      1, sizeof(message), (const char *)(updateMessage) );
@@ -132,6 +138,61 @@ void sendUpdate(message * updateMessage){
 	Bye();
     }
 }
+
+
+void markAsRead(){
+    if (debug)
+	printf("Marking message as read\n");
+
+
+}
+
+void addMail(){
+    if (debug)
+	printf("Adding mail to state\n");
+
+
+}
+
+void deleteMail(){
+    if (debug)
+	printf("Deleting mail\n");
+
+
+}
+
+void addUser(){
+    if (debug)
+	printf("Adding user\n");
+
+
+}
+
+
+void applyUpdate(char * mess){
+    message * messagePtr;
+    update * updatePtr;
+
+    messagePtr = (message *) mess;
+    updatePtr = (update *) messagePtr->payload;
+    
+    if (updatePtr->type == NEWMAILMSG){
+	addMail();
+    }
+
+    else if (updatePtr->type == NEWUSERMSG){
+	addUser();
+    }
+
+    else if (updatePtr->type == DELETEMAILMSG){
+	deleteMail();
+    }
+
+    else if (updatePtr->type == READMAILMSG){
+	markAsRead();
+    }
+}
+
 
 
 //processRegularMessage(sender, num_groups, target_groups, mess_type, mess);
@@ -154,13 +215,13 @@ void processRegularMessage(char * sender, int num_groups,
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
 	    sendUpdate(updateMessage);
-	    free (updateMessage); // frees update message		
+	    free(updateMessage); // frees update message		
 	}
 
     }
 
     else if (messagePtr->header.type == UPDATE){
-	// apply update
+	applyUpdate(mess);
 
     }
 
