@@ -154,23 +154,66 @@ void addMail(){
 
 }
 
-void deleteMail(){
+/* delete command will always execute if the message is in the state */
+void deleteMail(update * deleteUpdate){
+    int i;
+    int j;
+    user * userPtr;
+    mail_id targetID;
+
+    targetID = deleteUpdate->mailID;
+    userPtr = NULL;
+
     if (debug)
 	printf("Deleting mail\n");
 
+    /* find user */
+    i = 0;
+    while(i < MAX_USERS){
+	if (strcmp(local_state.users[i].userData.name, 
+		   deleteUpdate->user_name) ==0 &&
+	    local_state.users[i].valid == 1){
+	    userPtr = (user * ) &local_state.users[i].userData;
+	    break;
+	}
+	i++;
+    }
+    
+    j = 0;
+    if (userPtr != NULL){
+	while(j < MAX_EMAILS){
+	    if (userPtr->emails[j].valid == 1 &&
+		userPtr->emails[j].mailID.procID == targetID.procID &&
+		userPtr->emails[j].mailID.index == targetID.index){
+		
+		/* mark message as invalid */
+		if (debug)
+		    printf("Deleting email user = %s procID = %d index = %d\n",
+			   deleteUpdate->user_name, targetID.procID, 
+			   targetID.index);
 
+		userPtr->emails[j].valid = 0;
+		break;
+	    }
+	}
+	if (debug && j == MAX_EMAILS)
+	    printf("Could not find email user = %s procID = %d index = %d\n",
+		   deleteUpdate->user_name, targetID.procID, targetID.index);
+    }
 }
 
 
-/* scan state for first invalid user entry and add user */
-void addUser(){
+/* scan state for first invalid user entry and add user 
+ * user_name must be null terminated 
+ * does not check for duplicate user names*/
+void addUser(char * user_name){
     int i;
     int index;
 
     index = -1;
 
     if (debug)
-	printf("Adding user\n");
+	printf("Adding user %s\n", user_name);
 
     for (i = 0 ; i < MAX_USERS ; i ++){
 	if (local_state.users[i].valid == 0){
@@ -180,10 +223,12 @@ void addUser(){
 
     if (index != -1){
 	//sprintf(, "Server%s", argv[1] );
- 	local_state.users[index].valid = 1;
-	
+	strcpy(local_state.users[index].userData.name, user_name);
+ 	local_state.users[index].valid = 1;	
     }
-
+    else{
+	perror("ERROR: no more room for new users\n");
+    }
 }
 
 
@@ -199,11 +244,11 @@ void applyUpdate(char * mess){
     }
 
     else if (updatePtr->type == NEWUSERMSG){
-	addUser();
+	addUser(updatePtr->user_name);
     }
 
     else if (updatePtr->type == DELETEMAILMSG){
-	deleteMail();
+	deleteMail(updatePtr);
     }
 
     else if (updatePtr->type == READMAILMSG){

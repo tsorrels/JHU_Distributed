@@ -84,7 +84,7 @@ typedef struct message_type{
 
 typedef struct mail_id_type{
     int procID;
-    int emailIndex; // global counter, can count emails or udpates
+    int index; // global counter, can count emails or udpates
 } mail_id;
 
 
