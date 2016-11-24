@@ -139,6 +139,52 @@ void sendUpdate(message * updateMessage){
     }
 }
 
+/* searches state for first instance of user with name userName
+ * returns pointer to that user struct, or NULL if it does not exist
+ * does not check for duplicate entries for user name */
+user * findUser(char * userName){
+    int i;
+    user * userPtr;
+
+    /* find user */
+    userPtr = NULL;
+    i = 0;
+    while(i < MAX_USERS){
+	if (strcmp(local_state.users[i].userData.name, 
+		   userName) ==0 &&
+	    local_state.users[i].valid == 1){
+	    userPtr = (user * ) &local_state.users[i].userData;
+	    break;
+	}
+	i++;
+    }
+    if (debug && i == MAX_USERS)
+	printf("Could user = %s in delete email\n", userName);
+
+    return userPtr;
+}
+
+/* searches state for email with targetID for given userPtr
+ * userPtr must point to a valid user struct in state 
+ * returns NULL if email is not in state for this user*/
+email * findEmail(user * userPtr, mail_id targetID){
+    int j;
+    email * emailPtr;
+    emailPtr = NULL;
+
+    j = 0;
+    while(j < MAX_EMAILS){
+	if (userPtr->emails[j].valid == 1 &&
+	    userPtr->emails[j].mailID.procID == targetID.procID &&
+	    userPtr->emails[j].mailID.index == targetID.index){
+	
+	    emailPtr = &userPtr->emails[j];
+	    break;
+	}
+    }
+    return emailPtr;
+}
+
 
 void markAsRead(){
     if (debug)
@@ -156,10 +202,9 @@ void addMail(){
 
 /* delete command will always execute if the message is in the state */
 void deleteMail(update * deleteUpdate){
-    int i;
-    int j;
     user * userPtr;
     mail_id targetID;
+    email * emailPtr;
 
     targetID = deleteUpdate->mailID;
     userPtr = NULL;
@@ -168,38 +213,30 @@ void deleteMail(update * deleteUpdate){
 	printf("Deleting mail\n");
 
     /* find user */
-    i = 0;
-    while(i < MAX_USERS){
-	if (strcmp(local_state.users[i].userData.name, 
-		   deleteUpdate->user_name) ==0 &&
-	    local_state.users[i].valid == 1){
-	    userPtr = (user * ) &local_state.users[i].userData;
-	    break;
-	}
-	i++;
-    }
-    
-    j = 0;
-    if (userPtr != NULL){
-	while(j < MAX_EMAILS){
-	    if (userPtr->emails[j].valid == 1 &&
-		userPtr->emails[j].mailID.procID == targetID.procID &&
-		userPtr->emails[j].mailID.index == targetID.index){
-		
-		/* mark message as invalid */
-		if (debug)
-		    printf("Deleting email user = %s procID = %d index = %d\n",
-			   deleteUpdate->user_name, targetID.procID, 
-			   targetID.index);
+    userPtr = findUser(deleteUpdate->user_name);
 
-		userPtr->emails[j].valid = 0;
-		break;
-	    }
+    if (debug && userPtr == NULL)
+	printf("Could not find user = %s in delete email\n",
+	       deleteUpdate->user_name);
+
+    /* find email */
+    if (userPtr != NULL){
+	emailPtr = findEmail(userPtr, targetID);
+	if (emailPtr != NULL){
+	    if (debug)
+		printf("Deleting email user = %s procID = %d index = %d\n",
+		       deleteUpdate->user_name, targetID.procID, 
+		       targetID.index);
+	    /* mark email as invalid */
+	    emailPtr->valid = 0;
 	}
-	if (debug && j == MAX_EMAILS)
-	    printf("Could not find email user = %s procID = %d index = %d\n",
-		   deleteUpdate->user_name, targetID.procID, targetID.index);
-    }
+	else{
+	    if (debug)
+		printf("Couldnt find email user = %s procID = %d index = %d\n",
+		       deleteUpdate->user_name, targetID.procID, 
+		       targetID.index);
+	}   
+    }		
 }
 
 
