@@ -186,11 +186,42 @@ email * findEmail(user * userPtr, mail_id targetID){
 }
 
 
-void markAsRead(){
+void markAsRead(update * updatePtr){
+    user * userPtr;
+    mail_id targetID;
+    email * emailPtr;
+
+    targetID = updatePtr->mailID;
+    userPtr = NULL;
+
     if (debug)
 	printf("Marking message as read\n");
 
+    /* find user */
+    userPtr = findUser(updatePtr->user_name);
 
+    if (debug && userPtr == NULL)
+	printf("Could not find user = %s in markAsRead\n",
+	       updatePtr->user_name);
+
+    /* find email */
+    if (userPtr != NULL){
+	emailPtr = findEmail(userPtr, targetID);
+	if (emailPtr != NULL){
+	    if (debug)
+		printf("Marking read email user = %s procID = %d index = %d\n",
+		       updatePtr->user_name, targetID.procID, 
+		       targetID.index);
+	    /* mark email as read */
+	    emailPtr->read = 1;
+	}
+	else{
+	    if (debug)
+		printf("Couldnt find email user = %s procID = %d index = %d\n",
+		       updatePtr->user_name, targetID.procID, 
+		       targetID.index);
+	}   
+    }		
 }
 
 void addMail(){
@@ -199,7 +230,7 @@ void addMail(){
 
 
 }
-
+ 
 /* delete command will always execute if the message is in the state */
 void deleteMail(update * deleteUpdate){
     user * userPtr;
@@ -289,7 +320,7 @@ void applyUpdate(char * mess){
     }
 
     else if (updatePtr->type == READMAILMSG){
-	markAsRead();
+	markAsRead(updatePtr);
     }
 }
 
