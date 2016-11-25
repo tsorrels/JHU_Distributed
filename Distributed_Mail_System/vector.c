@@ -19,7 +19,6 @@ int email_vector_init(email_vector * vector){
 }
 
 
-
 /* searches vector for target time stamp and copies all 
  * indexes above down by 1 position
  * returns -1 if email does not exist in state

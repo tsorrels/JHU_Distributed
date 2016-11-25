@@ -185,7 +185,9 @@ email * findEmail(user * userPtr, mail_id targetID){
     return emailPtr;
 }
 
-
+/* searches for user in updatePtr, then emailID in updatePtr
+ * if search is successful, mark email->read = 1
+ * else, return -1 */
 int markAsRead(update * updatePtr){
     user * userPtr;
     mail_id targetID;
@@ -228,12 +230,21 @@ int markAsRead(update * updatePtr){
     return returnValue;
 }
 
-void addMail(update * updatePtr){
+
+/* inserts mail included in updatePtr 
+ * first searches for user, then calls email_vector_insert which inserts into
+ * user email vector, maintaining sorting by lamport time stamp
+ * returns -1 if cannot find user or insertion fails because of capacity and 
+ * inability to allocate more memory to add this email */
+int addMail(update * updatePtr){
     user * userPtr;
     email * emailPtr;
+    int checkError;
+    int returnValue;
 
     emailPtr = (email * ) updatePtr->payload;
     userPtr = NULL;
+    returnValue = -1;
 
     if (debug)
 	printf("Adding mail to state\n");
@@ -247,10 +258,15 @@ void addMail(update * updatePtr){
     
     /* insert into user's email vector */
     if (userPtr != NULL){
-	email_vector_insert(&userPtr->emails, emailPtr);
+	checkError = email_vector_insert(&userPtr->emails, emailPtr);
+	if ( checkError == 0){
+	    returnValue = 1;
+	}
     }
+    return returnValue;
 }
- 
+
+/* TODO: refactor to call email_vector_delete */
 /* delete command will always execute if the message is in the state */
 void deleteMail(update * deleteUpdate){
     user * userPtr;
@@ -355,7 +371,6 @@ void applyUpdate(char * mess){
 
 
 
-//processRegularMessage(sender, num_groups, target_groups, mess_type, mess);
 /* should this function return anything? */
 void processRegularMessage(char * sender, int num_groups, 
 			   char groups[][MAX_GROUP_NAME], 
