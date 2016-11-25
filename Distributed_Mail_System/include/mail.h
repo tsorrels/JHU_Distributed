@@ -28,7 +28,8 @@
 
 
 
-extern void loadState();
+
+
 
 /* System wide message types */
 typedef enum {
@@ -138,6 +139,17 @@ typedef struct email_type{
 
 
 
+
+/* For vector library */
+typedef struct email_vector_type{
+    int size;
+    int capacity;
+    email * emails;
+
+} email_vector;
+
+
+
 /* user data type*/
 typedef struct user_type{
     char name [MAX_USER_LENGTH];
@@ -163,3 +175,20 @@ typedef struct state_type{
     update_buffer local_update_buffer;
     connection connections[MAX_CONNECTIONS];
 } state;
+
+
+
+
+
+
+
+
+/* function declarations */
+extern void loadState();
+extern void email_vector_init(email_vector * vector);
+extern int email_vector_insert(email_vector * vector, email * emailPtr);
+
+
+
+
+
