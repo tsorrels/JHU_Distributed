@@ -173,7 +173,7 @@ email * findEmail(user * userPtr, mail_id targetID){
     emailPtr = NULL;
 
     j = 0;
-    while(j < MAX_EMAILS){
+    while(j < userPtr->emails.size){
 	if (userPtr->emails.emails[j].valid == 1 &&
 	    userPtr->emails.emails[j].mailID.procID == targetID.procID &&
 	    userPtr->emails.emails[j].mailID.index == targetID.index){
@@ -186,13 +186,15 @@ email * findEmail(user * userPtr, mail_id targetID){
 }
 
 
-void markAsRead(update * updatePtr){
+int markAsRead(update * updatePtr){
     user * userPtr;
     mail_id targetID;
     email * emailPtr;
+    int returnValue;
 
     targetID = updatePtr->mailID;
     userPtr = NULL;
+    returnValue = -1;
 
     if (debug)
 	printf("Marking message as read\n");
@@ -214,6 +216,7 @@ void markAsRead(update * updatePtr){
 		       targetID.index);
 	    /* mark email as read */
 	    emailPtr->read = 1;
+	    returnValue = 0;
 	}
 	else{
 	    if (debug)
@@ -222,6 +225,7 @@ void markAsRead(update * updatePtr){
 		       targetID.index);
 	}   
     }		
+    return returnValue;
 }
 
 void addMail(update * updatePtr){
@@ -239,14 +243,12 @@ void addMail(update * updatePtr){
 
     if (debug && userPtr == NULL)
 	printf("Could not find user = %s in markAsRead\n",
-	       updatePtr->user_name);
-    
+	       updatePtr->user_name);    
     
     /* insert into user's email vector */
     if (userPtr != NULL){
 	email_vector_insert(&userPtr->emails, emailPtr);
     }
-
 }
  
 /* delete command will always execute if the message is in the state */

@@ -6,26 +6,6 @@
 
 #define NUM_EMAILS 20
 #define NUM_USERS 20
-/*
-typedef struct email_vector_type{
-    int size;
-    int capacity;
-    email * emails;
-
-} email_vector;
-*/
-
-/*
-int user_vector_init(user_vector * vector){
-    vector->size = 0;
-    vector->emails = malloc(sizeof(email) * NUM_EMAILS);
-    if (vector->emails == NULL){
-	return -1;
-    }
-    vector->capacity = NUM_EMAILS;
-    return 0;
-    }*/
-
 
 
 int email_vector_init(email_vector * vector){
@@ -40,6 +20,39 @@ int email_vector_init(email_vector * vector){
 
 
 
+/* searches vector for target time stamp and copies all 
+ * indexes above down by 1 position
+ * returns -1 if email does not exist in state
+ * does not adjust memory allocated to vector */
+int email_vector_delete(email_vector * vector, mail_id target){
+    int i;
+
+    /* search for lamport time stamp */
+    for (i = 0 ; i < vector->size ; i++) {
+	if (vector->emails[i].mailID.index == target.index &&
+	    vector->emails[i].mailID.procID == target.procID){
+	    break;
+	}
+    }
+
+    if (i == vector->size){
+	return -1;
+    }
+
+    /* copy all 'higher' emails 'down' by 1 */
+    while (i < vector->size - 1){
+	memcpy(&vector->emails[i], &vector->emails[i + 1], sizeof(email));
+	i++;
+    }
+    vector->size --;
+    return 0;
+}
+
+
+/* if vectory size == capacity, allocates new memory and copies all entries
+ * searches for index of email that will be ordered before new mail
+ * copies all entries 'above' target index up one index in array; this is O(n)
+ * returns -1 if memory allocation fails and there is no room for new mail */
 int email_vector_insert(email_vector * vector, email * emailPtr){
     email * newEmailList;
     //email * currentEmail;
