@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define NUM_EMAILS 20
-
+#define NUM_USERS 20
 /*
 typedef struct email_vector_type{
     int size;
@@ -15,13 +15,28 @@ typedef struct email_vector_type{
 } email_vector;
 */
 
-
-void email_vector_init(email_vector * vector){
+/*
+int user_vector_init(user_vector * vector){
     vector->size = 0;
     vector->emails = malloc(sizeof(email) * NUM_EMAILS);
+    if (vector->emails == NULL){
+	return -1;
+    }
     vector->capacity = NUM_EMAILS;
-}
+    return 0;
+    }*/
 
+
+
+int email_vector_init(email_vector * vector){
+    vector->size = 0;
+    vector->emails = malloc(sizeof(email) * NUM_EMAILS);
+    if (vector->emails == NULL){
+	return -1;
+    }
+    vector->capacity = NUM_EMAILS;
+    return 0;
+}
 
 
 
@@ -44,7 +59,7 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 	free(vector->emails);
 	vector->emails = newEmailList;
     }    
-
+ 
     if (vector->size == 0){
 	memcpy(&vector->emails[0], emailPtr, sizeof(email));
 	vector->size ++;
@@ -54,7 +69,6 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 	/* find index of mail to insert after */
 	//currentEmail = vector->emails[size - 1];
 	index = vector->size - 1;	
-
 
 	/* find correct update index */
 	while(vector->emails[index].mailID.index >
@@ -69,8 +83,7 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     	    while(vector->emails[index].mailID.procID >
 		    targetID.procID){
 	        index --;
-	    }
-	    
+	    }	    
 	}
 
 	/* shift all 'higher' entries 'up' by 1 */

@@ -153,7 +153,8 @@ typedef struct email_vector_type{
 /* user data type*/
 typedef struct user_type{
     char name [MAX_USER_LENGTH];
-    email emails[MAX_EMAILS];
+    //email emails[MAX_EMAILS];
+    email_vector emails;
 } user;
 
 
@@ -180,12 +181,9 @@ typedef struct state_type{
 
 
 
-
-
-
 /* function declarations */
 extern void loadState();
-extern void email_vector_init(email_vector * vector);
+extern int email_vector_init(email_vector * vector);
 extern int email_vector_insert(email_vector * vector, email * emailPtr);
 
 

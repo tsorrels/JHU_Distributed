@@ -159,7 +159,7 @@ user * findUser(char * userName){
 	i++;
     }
     if (debug && i == MAX_USERS)
-	printf("Could user = %s in delete email\n", userName);
+	printf("Could not find user %s\n", userName);
 
     return userPtr;
 }
@@ -174,11 +174,11 @@ email * findEmail(user * userPtr, mail_id targetID){
 
     j = 0;
     while(j < MAX_EMAILS){
-	if (userPtr->emails[j].valid == 1 &&
-	    userPtr->emails[j].mailID.procID == targetID.procID &&
-	    userPtr->emails[j].mailID.index == targetID.index){
+	if (userPtr->emails.emails[j].valid == 1 &&
+	    userPtr->emails.emails[j].mailID.procID == targetID.procID &&
+	    userPtr->emails.emails[j].mailID.index == targetID.index){
 	
-	    emailPtr = &userPtr->emails[j];
+	    emailPtr = &userPtr->emails.emails[j];
 	    break;
 	}
     }
@@ -224,10 +224,28 @@ void markAsRead(update * updatePtr){
     }		
 }
 
-void addMail(){
+void addMail(update * updatePtr){
+    user * userPtr;
+    email * emailPtr;
+
+    emailPtr = (email * ) updatePtr->payload;
+    userPtr = NULL;
+
     if (debug)
 	printf("Adding mail to state\n");
 
+    /* find user */
+    userPtr = findUser(updatePtr->user_name);
+
+    if (debug && userPtr == NULL)
+	printf("Could not find user = %s in markAsRead\n",
+	       updatePtr->user_name);
+    
+    
+    /* insert into user's email vector */
+    if (userPtr != NULL){
+	email_vector_insert(&userPtr->emails, emailPtr);
+    }
 
 }
  
@@ -236,9 +254,10 @@ void deleteMail(update * deleteUpdate){
     user * userPtr;
     mail_id targetID;
     email * emailPtr;
-
+    
     targetID = deleteUpdate->mailID;
     userPtr = NULL;
+    
 
     if (debug)
 	printf("Deleting mail\n");
@@ -274,9 +293,10 @@ void deleteMail(update * deleteUpdate){
 /* scan state for first invalid user entry and add user 
  * user_name must be null terminated 
  * does not check for duplicate user names*/
-void addUser(char * user_name){
+int addUser(char * user_name){
     int i;
     int index;
+    int checkError;
 
     index = -1;
 
@@ -290,13 +310,20 @@ void addUser(char * user_name){
     }
 
     if (index != -1){
-	//sprintf(, "Server%s", argv[1] );
+	//sprintf(, "Server%s", argv[1] );	
+	checkError=email_vector_init(&local_state.users[index].userData.emails);
+	if (checkError < 0){
+	    perror("ERROR: failed email_vector_init for new user\n");
+	    return -1;   	    
+	}
 	strcpy(local_state.users[index].userData.name, user_name);
  	local_state.users[index].valid = 1;	
     }
     else{
 	perror("ERROR: no more room for new users\n");
+	return -1;
     }
+    return 0;
 }
 
 
@@ -308,7 +335,7 @@ void applyUpdate(char * mess){
     updatePtr = (update *) messagePtr->payload;
     
     if (updatePtr->type == NEWMAILMSG){
-	addMail();
+	addMail(updatePtr);
     }
 
     else if (updatePtr->type == NEWUSERMSG){
