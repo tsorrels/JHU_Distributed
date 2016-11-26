@@ -344,10 +344,15 @@ int addUser(char * user_name){
     return 0;
 }
 
+void storeUpdate(message * mess){
+
+}
 
 void applyUpdate(char * mess){
     message * messagePtr;
     update * updatePtr;
+
+    //TODO: check if we already received/applied this update
 
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
@@ -367,6 +372,10 @@ void applyUpdate(char * mess){
     else if (updatePtr->type == READMAILMSG){
 	markAsRead(updatePtr);
     }
+
+    /* increment update counter */
+    local_state.updateIndex ++;
+    storeUpdate(mess);
 }
 
 

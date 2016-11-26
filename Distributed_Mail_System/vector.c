@@ -6,6 +6,7 @@
 
 #define NUM_EMAILS 20
 #define NUM_USERS 20
+#define NUM_UPDATES 20
 
 
 int email_vector_init(email_vector * vector){
@@ -17,6 +18,19 @@ int email_vector_init(email_vector * vector){
     vector->capacity = NUM_EMAILS;
     return 0;
 }
+
+
+int update_vector_init(update_vector * vector){
+    vector->size = 0;
+    vector->updates = malloc(sizeof(update) * NUM_UPDATES);
+    if (vector->updates == NULL){
+	return -1;
+    }
+    vector->capacity = NUM_UPDATES;
+    return 0;
+}
+
+
 
 
 /* searches vector for target time stamp and copies all 
@@ -111,3 +125,66 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     }
     return 0;
 }
+
+
+
+
+
+
+
+int update_vector_insert(update_vector * vector, update * updatePtr){
+    update * newUpdateList;
+    int index;
+    int i;
+
+    if (vector->size == vector->capacity){
+        newUpdateList = malloc(sizeof(update) * 
+			       (vector->capacity + NUM_UPDATES));
+	if (newUpdateList == NULL){
+	    perror("Failed to allocate new memory in update_vector");
+	    return -1;
+	}
+	memcpy(vector->updates, newUpdateList, (sizeof(update) * vector->size));
+	free(vector->updates);
+	vector->updates = newUpdateList;
+    }    
+ 
+    if (vector->size == 0){
+	memcpy(&vector->updates[0], updatePtr, sizeof(update));
+	vector->size ++;
+    }
+
+    else{
+	/* find index of update to insert after */
+	//currentEmail = vector->emails[size - 1];
+	index = vector->size - 1;	
+
+	/* find correct update index */
+	while(vector->updates[index].updateIndex >
+		updatePtr->updateIndex){
+
+	    index --;
+	}
+
+	/* check if update is already in vector */
+	if (vector->updates[index].updateIndex == updatePtr->updateIndex){
+	    perror("ERROR: tried to insert update that already has");
+	}
+
+	/* shift all 'higher' entries 'up' by 1 */
+	i = index + 1;
+	while (i <= vector->size){
+	    memcpy(&vector->updates[i + 1], &vector->updates[i], 
+		   sizeof(update));
+	    i ++;	    
+	}
+	
+	/* write in update */
+        memcpy(&vector->updates[index + 1], updatePtr, sizeof(update));
+	vector->size ++;
+    }
+    return 0;
+}
+
+
+

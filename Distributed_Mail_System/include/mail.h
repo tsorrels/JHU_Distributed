@@ -102,6 +102,7 @@ typedef struct command_type{
 typedef struct update_type{
     update_type type;
     int procID;
+    int updateIndex;
     char user_name[MAX_USER_LENGTH];
     mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];
@@ -147,6 +148,14 @@ typedef struct email_vector_type{
     email * emails;
 
 } email_vector;
+
+
+typedef struct update_vector_type{
+    int size;
+    int capacity;
+    update * updates;
+
+} update_vector;
 
 
 
