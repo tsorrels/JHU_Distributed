@@ -128,7 +128,25 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 
 
 
+/* searches given vector for target updateIndex associated with the process
+ * to which this vector is associated
+ * returns a pointer to this update, or NULL */
+update * update_vector_get(update_vector * vector, int updateIndex){
+    update * targetUpdate;
+    int i;
 
+    targetUpdate = NULL;
+    i = 0;
+
+    while (i < vector->size){
+	if (updateIndex == vector->updates[i].updateIndex){
+	    targetUpdate = &vector->updates[i];
+	    break;
+	}
+    }
+
+    return targetUpdate;
+}
 
 
 

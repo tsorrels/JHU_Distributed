@@ -109,8 +109,17 @@ typedef struct update_type{
 } update;
 
 
+typedef struct update_vector_type{
+    int size;
+    int capacity;
+    update * updates;
+
+} update_vector;
+
+
 /* Structure to cache updates from all processes */
 typedef struct update_buffer_type{
+    update_vector procVectors [NUM_SERVERS];
     update proc1[MAX_UPDATE];
     update proc2[MAX_UPDATE];
     update proc3[MAX_UPDATE];
@@ -150,12 +159,6 @@ typedef struct email_vector_type{
 } email_vector;
 
 
-typedef struct update_vector_type{
-    int size;
-    int capacity;
-    update * updates;
-
-} update_vector;
 
 
 
@@ -195,6 +198,9 @@ extern void loadState();
 extern int email_vector_init(email_vector * vector);
 extern int email_vector_insert(email_vector * vector, email * emailPtr);
 
+extern int update_vector_init(update_vector * vector);
+extern int update_vector_insert(update_vector * vector, update * updatePtr);
+extern update * update_vector_get(update_vector * vector, int updateIndex);
 
 
 

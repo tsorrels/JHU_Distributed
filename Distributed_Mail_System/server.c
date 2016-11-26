@@ -344,7 +344,17 @@ int addUser(char * user_name){
     return 0;
 }
 
-void storeUpdate(message * mess){
+/* searches update vector for given procID for update with given updateIndex
+ * returns pointer to update, or NULL if it is not in the buffer */
+update * findUpdate(int procID, int updateIndex){
+    update_vector * targetVector;
+    targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
+    /* return pointer to update, or NULL */
+    return update_vector_get(targetVector , updateIndex);	
+}
+
+void storeUpdate(char * mess){
+    
 
 }
 
@@ -574,6 +584,7 @@ static	void	readSpreadMessage()
 
 
 void initialize(int argc, char ** argv){
+    int i;
     debug = 0;
 
     if (argc < 2){
@@ -588,6 +599,10 @@ void initialize(int argc, char ** argv){
     }
 
     local_state.proc_ID = atoi(argv[1]);
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	update_vector_init(&local_state.local_update_buffer.procVectors[i]);
+    }
+
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( User, "Server%s", argv[1] );
