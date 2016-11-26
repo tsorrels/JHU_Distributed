@@ -358,34 +358,46 @@ void storeUpdate(char * mess){
 
 }
 
-void applyUpdate(char * mess){
+int applyUpdate(char * mess){
     message * messagePtr;
     update * updatePtr;
+    int returnValue;
 
-    //TODO: check if we already received/applied this update
-
+    returnValue = 0;
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
+
+    /* check if we already received/applied this update */
+    if (findUpdate(updatePtr->procID, updatePtr->updateIndex) == NULL){
+	if (debug)
+	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
+		   updatePtr->procID, updatePtr->updateIndex);
+	returnValue = 1;
+    }
     
     if (updatePtr->type == NEWMAILMSG){
-	addMail(updatePtr);
+	returnValue = addMail(updatePtr);
     }
 
     else if (updatePtr->type == NEWUSERMSG){
-	addUser(updatePtr->user_name);
+	returnValue = addUser(updatePtr->user_name);
     }
 
     else if (updatePtr->type == DELETEMAILMSG){
+	//TODO: return value
 	deleteMail(updatePtr);
+	//returnValue = deleteMail(updatePtr);
     }
 
     else if (updatePtr->type == READMAILMSG){
-	markAsRead(updatePtr);
+	returnValue = markAsRead(updatePtr);
     }
 
     /* increment update counter */
     local_state.updateIndex ++;
     storeUpdate(mess);
+
+    return returnValue;
 }
 
 
@@ -578,8 +590,6 @@ static	void	readSpreadMessage()
 	       sender, service_type, mess_type, endian_mismatch, num_groups, ret, mess );
     }else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 }
-
-
 
 
 
