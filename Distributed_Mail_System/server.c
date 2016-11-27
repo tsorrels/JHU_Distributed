@@ -353,15 +353,11 @@ update * findUpdate(int procID, int updateIndex){
     return update_vector_get(targetVector , updateIndex);	
 }
 
-int storeUpdate(char * mess){
-    message * messagePtr;
-    update * updatePtr;
+int storeUpdate(update * updatePtr){
     int returnValue;
     int procID;
 
     returnValue = 0;
-    messagePtr = (message *) mess;
-    updatePtr = (update *) messagePtr->payload;
     procID = updatePtr->procID;
 
     returnValue = update_vector_insert(&local_state.local_update_buffer.
@@ -369,6 +365,43 @@ int storeUpdate(char * mess){
 
     return returnValue;
 }
+
+
+
+/* Updates this proc's vector in local update matrix
+ * checks whether this is a consecutive update, then conditionally updates
+ * return 0 on vector update, 1 if did not update vector */
+int updateVector(update * updatePtr){
+    int targetProcID;
+    int targetUpdateIndex;
+    int oldUpdateIndex;
+    int returnValue;
+
+    returnValue = 0;
+    targetProcID = updatePtr->procID;
+    targetUpdateIndex = updatePtr->updateIndex;
+
+    /* check if this is an old update */
+    if (targetUpdateIndex == oldUpdateIndex + 1){
+	local_state._local_update_matrix[local_state.proc_ID]
+	    [targetProcID - 1] = targetUpdexIndex;
+
+	if (debug)
+	    printf("Updated local vector w update for procID= %s, index= %s\n",
+		   targetProcID, targetUpdateINdex);
+
+    }
+    else {
+	returnValue = 1;
+	if (debug)
+	    printf("Did not update vector w update for procID= %s, index= %s\n",
+		   targetProcID, targetUpdateINdex);	
+    }
+
+    return returnValue;
+}
+
+
 
 int applyUpdate(char * mess){
     message * messagePtr;
@@ -407,7 +440,8 @@ int applyUpdate(char * mess){
 
     /* increment update counter */
     local_state.updateIndex ++;
-    storeUpdate(mess);
+    storeUpdate(updatePtr);
+    updateMatrix(updatePtr);
 
     return returnValue;
 }
