@@ -383,19 +383,19 @@ int updateVector(update * updatePtr){
 
     /* check if this is an old update */
     if (targetUpdateIndex == oldUpdateIndex + 1){
-	local_state._local_update_matrix[local_state.proc_ID]
-	    [targetProcID - 1] = targetUpdexIndex;
+	local_state.local_update_matrix.latest_update[local_state.proc_ID]
+	    [targetProcID - 1] = targetUpdateIndex;
 
 	if (debug)
-	    printf("Updated local vector w update for procID= %s, index= %s\n",
-		   targetProcID, targetUpdateINdex);
+	    printf("Updated local vector w update for procID= %i, index= %i\n",
+		   targetProcID, targetUpdateIndex);
 
     }
     else {
 	returnValue = 1;
 	if (debug)
-	    printf("Did not update vector w update for procID= %s, index= %s\n",
-		   targetProcID, targetUpdateINdex);	
+	    printf("Did not update vector w update for procID= %i, index= %i\n",
+		   targetProcID, targetUpdateIndex);	
     }
 
     return returnValue;
@@ -441,7 +441,7 @@ int applyUpdate(char * mess){
     /* increment update counter */
     local_state.updateIndex ++;
     storeUpdate(updatePtr);
-    updateMatrix(updatePtr);
+    updateVector(updatePtr);
 
     return returnValue;
 }
