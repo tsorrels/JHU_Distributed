@@ -353,9 +353,21 @@ update * findUpdate(int procID, int updateIndex){
     return update_vector_get(targetVector , updateIndex);	
 }
 
-void storeUpdate(char * mess){
-    
+int storeUpdate(char * mess){
+    message * messagePtr;
+    update * updatePtr;
+    int returnValue;
+    int procID;
 
+    returnValue = 0;
+    messagePtr = (message *) mess;
+    updatePtr = (update *) messagePtr->payload;
+    procID = updatePtr->procID;
+
+    returnValue = update_vector_insert(&local_state.local_update_buffer.
+				       procVectors[procID - 1], updatePtr);
+
+    return returnValue;
 }
 
 int applyUpdate(char * mess){
