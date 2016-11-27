@@ -139,6 +139,37 @@ void sendUpdate(message * updateMessage){
     }
 }
 
+void sendMatrix(){
+    int ret;
+    message * mess;
+
+    /* craft message */
+    mess = malloc(sizeof(message));
+    if (mess == NULL){
+	perror("Malloc failed in sendMatrix\n");
+	Bye();
+    }
+    mess->header.type = MATRIX;
+    mess->header.proc_num = local_state.proc_ID;
+    memcpy(mess->payload, &local_state.local_update_matrix, 
+	   sizeof(update_matrix));
+
+    if (debug)
+	printf("sending matrix\n");
+
+    ret= SP_multicast(Mbox, AGREED_MESS,(const char *)local_state.server_group,
+		      1, sizeof(message), (const char *)(mess) );
+
+    free(mess);
+    if( ret < 0 ) 
+    {
+	perror("ERROR: failed to send update in sendUpdate");
+	SP_error( ret );
+	Bye();
+    }
+}
+
+
 /* searches state for first instance of user with name userName
  * returns pointer to that user struct, or NULL if it does not exist
  * does not check for duplicate entries for user name */
@@ -380,6 +411,8 @@ int updateVector(update * updatePtr){
     returnValue = 0;
     targetProcID = updatePtr->procID;
     targetUpdateIndex = updatePtr->updateIndex;
+    oldUpdateIndex = local_state.local_update_matrix.latest_update
+	[local_state.proc_ID][targetProcID - 1];
 
     /* check if this is an old update */
     if (targetUpdateIndex == oldUpdateIndex + 1){
@@ -503,13 +536,21 @@ void processRegularMessage(char * sender, int num_groups,
 
 }
 
+int checkReconcile(){
+    return 1;
+}
+
 
 /* should this function return anything? */
 void processMembershipMessage(char * mess){
+    int reconcile;
+   
+    reconcile = checkReconcile();
 
-    
-
-
+    if (reconcile){
+	local_state.status = RECONCILE;
+	sendMatrix();
+    }
 }
 
 

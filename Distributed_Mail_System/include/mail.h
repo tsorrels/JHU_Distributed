@@ -28,7 +28,12 @@
 
 
 
-
+/* System wide message types */
+typedef enum {
+    RECONCILE,
+    PARTITIONED,
+    NORMAL,
+} server_status_type;
 
 
 /* System wide message types */
@@ -180,6 +185,7 @@ typedef struct user_entry_type{
 /* State local to each server */
 typedef struct state_type{
     int proc_ID;
+    server_status_type status;
     char server_group[MAX_GROUP_NAME];
     char private_group[MAX_GROUP_NAME];
     int updateIndex;
