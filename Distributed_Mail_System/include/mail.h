@@ -184,11 +184,11 @@ typedef struct user_entry_type{
 
 /* State local to each server */
 typedef struct state_type{
-    int proc_ID;
-    server_status_type status;
-    char server_group[MAX_GROUP_NAME];
-    char private_group[MAX_GROUP_NAME];
-    int updateIndex;
+    int proc_ID; /* this server's ID */
+    server_status_type status; 
+    char server_group[MAX_GROUP_NAME]; /* spread group name for server */
+    char private_group[MAX_GROUP_NAME]; /* server's private group */
+    int updateIndex; /* counter of updates received, for LTS */
     user_entry users[MAX_USERS];
     update_matrix local_update_matrix;
     update_buffer local_update_buffer;

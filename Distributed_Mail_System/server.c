@@ -88,6 +88,7 @@ message * generateUpdate(char * mess){
     /* load message update with message type, procID, and user_name */
     updatePtr = (update *) updateMessage->payload;
     updatePtr->procID = local_state.proc_ID;
+    updatePtr->updateIndex = local_state.updateIndex + 1;
     memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
 
 
@@ -378,8 +379,10 @@ int addUser(char * user_name){
 /* searches update vector for given procID for update with given updateIndex
  * returns pointer to update, or NULL if it is not in the buffer */
 update * findUpdate(int procID, int updateIndex){
+    //int targetProcID = updateIndex->procID;
     update_vector * targetVector;
     targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
+    //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
     /* return pointer to update, or NULL */
     return update_vector_get(targetVector , updateIndex);	
 }
@@ -446,11 +449,12 @@ int applyUpdate(char * mess){
     updatePtr = (update *) messagePtr->payload;
 
     /* check if we already received/applied this update */
-    if (findUpdate(updatePtr->procID, updatePtr->updateIndex) == NULL){
+    //TODO: check if this is a lower LTS than what we already have
+    if (findUpdate(updatePtr->procID, updatePtr->updateIndex) != NULL){
 	if (debug)
 	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
 		   updatePtr->procID, updatePtr->updateIndex);
-	returnValue = 1;
+	return 1;
     }
     
     if (updatePtr->type == NEWMAILMSG){
@@ -472,6 +476,8 @@ int applyUpdate(char * mess){
     }
 
     /* increment update counter */
+
+    //TODO: check MAX(local_time_stamp, update_time_stamp)
     local_state.updateIndex ++;
     storeUpdate(updatePtr);
     updateVector(updatePtr);
@@ -502,7 +508,6 @@ void processRegularMessage(char * sender, int num_groups,
 	    sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
-
     }
 
     else if (messagePtr->header.type == UPDATE){
@@ -699,7 +704,7 @@ void initialize(int argc, char ** argv){
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	update_vector_init(&local_state.local_update_buffer.procVectors[i]);
     }
-
+    
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( User, "Server%s", argv[1] );
