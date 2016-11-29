@@ -77,6 +77,21 @@ int email_vector_delete(email_vector * vector, mail_id target){
     return -1;
 }
 
+int update_vector_delete(update_vector * vector, mail_id target){
+    update **pp, *temp;
+
+    for(pp=&vector->updates; *pp && ((*pp)->mailID.index !=
+		target.index || (*pp)->mailID.procID != target.procID);
+        pp=&(*pp)->next);
+
+    if(*pp){
+        temp = *pp;
+        *pp = (*pp)->next;
+        free(temp);
+        return 0;
+    }
+    return -1;
+}
 
 /* if vectory size == capacity, allocates new memory and copies all entries
  * searches for index of email that will be ordered before new mail
@@ -197,6 +212,18 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 
     return targetUpdate;
 }*/
+
+email * email_vector_get(email_vector * vector, mail_id target){
+    email **pp;
+
+    for(pp=&vector->emails; *pp && ((*pp)->mailID.index !=
+        target.index || (*pp)->mailID.procID != target.procID);
+        pp=&(*pp)->next);
+
+    return (*pp);
+
+}
+
 
 update * update_vector_get(update_vector * vector, int updateIndex){
     update **pp;
