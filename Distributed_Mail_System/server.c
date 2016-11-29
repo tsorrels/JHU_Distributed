@@ -148,7 +148,45 @@ void sendUpdate(message * updateMessage){
     }
 }
 
-void sendMatrix(){
+
+void sendServerUpdates(int procID){
+    
+
+
+
+}
+
+
+
+void updateMatrix(message * messagePtr){
+    int i;
+    int j;
+    update_matrix * sentMatrix;
+    update_matrix * localMatrix;    
+
+    sentMatrix = (update_matrix * ) messagePtr->payload;
+    localMatrix = &local_state.local_update_matrix;//.latest_update;
+
+    /* for each process in matrix */
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (i == local_state.proc_ID){
+	    /* this is the this process's vector */
+	    continue;
+	}
+	for (j = 0 ; j < NUM_SERVERS ; j ++){
+	    /* compare if this is more current data */
+	    if (sentMatrix->latest_update[i][j] > localMatrix->latest_update[i][j]){
+		/* update this vector */
+		localMatrix->latest_update[i][j] = sentMatrix->latest_update[i][j];
+	    }
+	}
+    }
+}
+
+
+/* create new message containing local update matrix and sends to group
+ * returns 0 on success, -1 on malloc failuer or send failure */
+int sendMatrix(){
     int ret;
     message * mess;
 
@@ -156,7 +194,8 @@ void sendMatrix(){
     mess = malloc(sizeof(message));
     if (mess == NULL){
 	perror("Malloc failed in sendMatrix\n");
-	Bye();
+	return -1;
+	//Bye();
     }
     mess->header.type = MATRIX;
     mess->header.proc_num = local_state.proc_ID;
@@ -174,8 +213,10 @@ void sendMatrix(){
     {
 	perror("ERROR: failed to send update in sendUpdate");
 	SP_error( ret );
-	Bye();
+	return -1;
+	//Bye();
     }
+    return 0;
 }
 
 
@@ -537,7 +578,13 @@ void processRegularMessage(char * sender, int num_groups,
     else if (messagePtr->header.type == MATRIX){
 	// execute
 
-	// udpate local matrix
+	if (local_state.status != RECONCILE){
+	    if (debug)
+		printf("Received matrix message, but not reconciling\n");
+
+	    // update local matrix
+	    updateMatrix(messagePtr);
+	}
 
     }
 
@@ -571,6 +618,7 @@ void processMembershipMessage(char * mess){
     reconcile = checkReconcile();
 
     if (reconcile){
+	/* set status to reconcile and broadcast update vectors */
 	local_state.status = RECONCILE;
 	sendMatrix();
     }
