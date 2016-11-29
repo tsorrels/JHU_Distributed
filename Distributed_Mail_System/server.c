@@ -28,6 +28,14 @@ void init();
 void Bye();
 static	void	readSpreadMessage();
 
+
+int max(int left, int right){
+    if (left > right){
+	return left;
+    }
+    return right;
+}
+
 int main (int argc, char ** argv)
 {
     int	ret;
@@ -175,10 +183,11 @@ void sendMatrix(){
  * returns pointer to that user struct, or NULL if it does not exist
  * does not check for duplicate entries for user name */
 user * findUser(char * userName){
-    int i;
+    //int i;
     user * userPtr;
 
     /* find user */
+    /*
     userPtr = NULL;
     i = 0;
     while(i < MAX_USERS){
@@ -192,7 +201,9 @@ user * findUser(char * userName){
     }
     if (debug && i == MAX_USERS)
 	printf("Could not find user %s\n", userName);
-
+    */
+    userPtr = user_vector_get(local_state.users, userName);
+    
     return userPtr;
 }
 
@@ -220,7 +231,7 @@ email * findEmail(user * userPtr, mail_id targetID){
 
 /* searches for user in updatePtr, then emailID in updatePtr
  * if search is successful, mark email->read = 1
- * else, return -1 */
+ * else, return 1 */
 int markAsRead(update * updatePtr){
     user * userPtr;
     mail_id targetID;
@@ -229,7 +240,7 @@ int markAsRead(update * updatePtr){
 
     targetID = updatePtr->mailID;
     userPtr = NULL;
-    returnValue = -1;
+    returnValue = 1;
 
     if (debug)
 	printf("Marking message as read\n");
@@ -296,16 +307,16 @@ int addMail(update * updatePtr){
     return checkError;
 }
 
-/* TODO: refactor to call email_vector_delete */
-/* delete command will always execute if the message is in the state */
-void deleteMail(update * deleteUpdate){
+/* delete command will always execute if the message is in the state 
+ * if email was deleted, return 0.  If not, return 1*/
+int deleteMail(update * deleteUpdate){
     user * userPtr;
     mail_id targetID;
     email * emailPtr;
     
     targetID = deleteUpdate->mailID;
     userPtr = NULL;
-    
+    returnValue = 1;
 
     if (debug)
 	printf("Deleting mail\n");
@@ -326,7 +337,9 @@ void deleteMail(update * deleteUpdate){
 		       deleteUpdate->user_name, targetID.procID, 
 		       targetID.index);
 	    /* mark email as invalid */
-	    emailPtr->valid = 0;
+	    //emailPtr->valid = 0;
+	    email_vector_delete(userPtr->emails, taretID);
+	    returnValue = 0;
 	}
 	else{
 	    if (debug)
@@ -334,7 +347,8 @@ void deleteMail(update * deleteUpdate){
 		       deleteUpdate->user_name, targetID.procID, 
 		       targetID.index);
 	}   
-    }		
+    }
+    return returnValue;
 }
 
 
@@ -342,15 +356,17 @@ void deleteMail(update * deleteUpdate){
  * user_name must be null terminated 
  * does not check for duplicate user names*/
 int addUser(char * user_name){
-    int i;
-    int index;
+    //int i;
+    //int index;
     int checkError;
 
-    index = -1;
+    //index = -1;
 
     if (debug)
 	printf("Adding user %s\n", user_name);
 
+    
+/*
     for (i = 0 ; i < MAX_USERS ; i ++){
 	if (local_state.users[i].valid == 0){
 	    index = i;
@@ -358,7 +374,6 @@ int addUser(char * user_name){
     }
 
     if (index != -1){
-	//sprintf(, "Server%s", argv[1] );	
 	checkError=email_vector_init(&local_state.users[index].userData.emails);
 	if (checkError < 0){
 	    perror("ERROR: failed email_vector_init for new user\n");
@@ -366,11 +381,14 @@ int addUser(char * user_name){
 	}
 	strcpy(local_state.users[index].userData.name, user_name);
  	local_state.users[index].valid = 1;	
-    }
+	}*/
+    checkError = user_vector_insert(local_state.users, user_name);
+
     else{
 	perror("ERROR: no more room for new users\n");
 	return -1;
     }
+
     return 0;
 }
 
@@ -465,9 +483,7 @@ int applyUpdate(char * mess){
     }
 
     else if (updatePtr->type == DELETEMAILMSG){
-	//TODO: return value
-	deleteMail(updatePtr);
-	//returnValue = deleteMail(updatePtr);
+	returnValue = deleteMail(updatePtr);
     }
 
     else if (updatePtr->type == READMAILMSG){
@@ -475,9 +491,11 @@ int applyUpdate(char * mess){
     }
 
     /* increment update counter */
+    //TODO: verify
+    local_state.updateIndex = max(local_state.updateIndex + 1,
+				  updatePtr->updateIndex);
+    //local_state.updateIndex ++;
 
-    //TODO: check MAX(local_time_stamp, update_time_stamp)
-    local_state.updateIndex ++;
     storeUpdate(updatePtr);
     updateVector(updatePtr);
 
