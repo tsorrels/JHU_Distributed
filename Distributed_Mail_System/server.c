@@ -202,7 +202,7 @@ user * findUser(char * userName){
     if (debug && i == MAX_USERS)
 	printf("Could not find user %s\n", userName);
     */
-    userPtr = user_vector_get(local_state.users, userName);
+    userPtr = user_vector_get(&local_state.users, userName);
     
     return userPtr;
 }
@@ -213,7 +213,7 @@ user * findUser(char * userName){
 email * findEmail(user * userPtr, mail_id targetID){
     //int j;
     email * emailPtr;
-    emailPtr = email_vector_insert(userPtr->emails.vector, targetID);  
+    emailPtr = email_vector_get(&userPtr->emails, targetID);  
     
     /*
     j = 0;
@@ -284,7 +284,7 @@ int addMail(update * updatePtr){
     user * userPtr;
     email * emailPtr;
     int checkError;
-    int returnValue;
+    //int returnValue;
 
     emailPtr = (email * ) updatePtr->payload;
     userPtr = NULL;
@@ -313,6 +313,7 @@ int deleteMail(update * deleteUpdate){
     user * userPtr;
     mail_id targetID;
     email * emailPtr;
+    int returnValue;
     
     targetID = deleteUpdate->mailID;
     userPtr = NULL;
@@ -338,7 +339,7 @@ int deleteMail(update * deleteUpdate){
 		       targetID.index);
 	    /* mark email as invalid */
 	    //emailPtr->valid = 0;
-	    email_vector_delete(userPtr->emails, taretID);
+	    email_vector_delete(&userPtr->emails, targetID);
 	    returnValue = 0;
 	}
 	else{
@@ -382,9 +383,9 @@ int addUser(char * user_name){
 	strcpy(local_state.users[index].userData.name, user_name);
  	local_state.users[index].valid = 1;	
 	}*/
-    checkError = user_vector_insert(local_state.users, user_name);
+    checkError = user_vector_insert(&local_state.users, user_name);
 
-    else{
+    if (checkError < 0){
 	perror("ERROR: no more room for new users\n");
 	return -1;
     }
@@ -724,7 +725,7 @@ void initialize(int argc, char ** argv){
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	for(j = 0 ; j < NUM_SERVERS ; j ++){
-	    local_state.update_matrix[i][j] = -1;
+	    local_state.local_update_matrix.latest_update[i][j] = -1;
 	}
     }
     
