@@ -93,6 +93,20 @@ int update_vector_delete(update_vector * vector, mail_id target){
     return -1;
 }
 
+int user_vector_delete(user_vector * vector, char * name){
+    user **pp, *temp;
+
+    for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
+
+    if(*pp && strcmp((*pp)->name, name) == 0){
+        temp = *pp;
+        *pp = (*pp)->next;
+        free(temp);
+        return 0;
+    }
+
+    return -1;
+}
 /* if vectory size == capacity, allocates new memory and copies all entries
  * searches for index of email that will be ordered before new mail
  * copies all entries 'above' target index up one index in array; this is O(n)
@@ -235,6 +249,15 @@ update * update_vector_get(update_vector * vector, int updateIndex){
 
 }
 
+user * user_vector_get(user_vector * vector, char * name){
+    user **pp, *temp;
+
+    for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
+
+    return (*pp);
+
+}
+
 /*int update_vector_insert(update_vector * vector, update * updatePtr){
     update * newUpdateList;
     int index;
@@ -305,7 +328,29 @@ int update_vector_insert(update_vector * vector, update * updatePtr){
     temp = *pp;
     *pp = newUpdate;
     (*pp)->next = temp;
+
+    return 0;
+}
+
+int user_vector_insert(user_vector * vector, char * name){
+    user **pp, *newUser, *temp;
     
+    if((newUser = malloc(sizeof(user))) == NULL){
+        perror("Failed to allocate new memory in update_vector");
+	    return -1;
+    }
+
+    strcpy(newUser->name, name);
+
+    for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
+
+    if(*pp && strcmp((*pp)->name, name) == 0)
+        return -1;
+
+    *pp = newUser;
+    (*pp)->next = NULL;
+
+    return 0;
 }
 
 

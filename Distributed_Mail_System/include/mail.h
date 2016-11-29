@@ -174,6 +174,7 @@ typedef struct user_type{
     char name [MAX_USER_LENGTH];
     //email emails[MAX_EMAILS];
     email_vector emails;
+    struct user_type * next;
 } user;
 
 
@@ -184,7 +185,7 @@ typedef struct user_entry_type{
 } user_entry;
 
 typedef struct user_vector_type{
-	//
+	user * user_head;
 } user_vector;
 
 /* State local to each server */
