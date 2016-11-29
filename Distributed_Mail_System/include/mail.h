@@ -203,11 +203,15 @@ typedef struct state_type{
 
 /* function declarations */
 extern void loadState();
-extern int email_vector_init(email_vector * vector);
-extern int email_vector_insert(email_vector * vector, email * emailPtr);
 
-extern int update_vector_init(update_vector * vector);
+//extern int email_vector_init(email_vector * vector);
+extern int email_vector_insert(email_vector * vector, email * emailPtr);
+extern int email_vector_delete(email_vector * vector, mail_id target);
+extern email * email_vector_get(email_vector * vector, mail_id target);
+
+//extern int update_vector_init(update_vector * vector);
 extern int update_vector_insert(update_vector * vector, update * updatePtr);
+extern int update_vector_delete(update_vector * vector, mail_id target);
 extern update * update_vector_get(update_vector * vector, int updateIndex);
 
 

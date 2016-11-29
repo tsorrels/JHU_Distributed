@@ -87,10 +87,9 @@ message * generateUpdate(char * mess){
 
     /* load message update with message type, procID, and user_name */
     updatePtr = (update *) updateMessage->payload;
-    updatePtr->procID = local_state.proc_ID;
+    updatePtr->procID = local_state.proc_ID;     //modify
     updatePtr->updateIndex = local_state.updateIndex + 1;
     memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
-
 
     if (commandPtr->type == NEWUSERCMD){
 	updatePtr->type = NEWUSERMSG;
@@ -105,6 +104,7 @@ message * generateUpdate(char * mess){
 	updatePtr->type = READMAILMSG;
 	updatePtr->mailID = commandPtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
+	// I dont think this memcpy is necessary
     }
 
     else if (commandPtr->type == NEWMAILCMD){
@@ -276,7 +276,7 @@ int addMail(update * updatePtr){
 
     emailPtr = (email * ) updatePtr->payload;
     userPtr = NULL;
-    returnValue = -1;
+    checkError = -1;
 
     if (debug)
 	printf("Adding mail to state\n");
@@ -285,17 +285,14 @@ int addMail(update * updatePtr){
     userPtr = findUser(updatePtr->user_name);
 
     if (debug && userPtr == NULL)
-	printf("Could not find user = %s in markAsRead\n",
+	printf("Could not find user = %s in addMail\n",
 	       updatePtr->user_name);    
     
     /* insert into user's email vector */
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
-	if ( checkError == 0){
-	    returnValue = 1;
-	}
     }
-    return returnValue;
+    return checkError;
 }
 
 /* TODO: refactor to call email_vector_delete */
@@ -450,6 +447,7 @@ int applyUpdate(char * mess){
 
     /* check if we already received/applied this update */
     //TODO: check if this is a lower LTS than what we already have
+    // modify
     if (findUpdate(updatePtr->procID, updatePtr->updateIndex) != NULL){
 	if (debug)
 	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
@@ -687,6 +685,7 @@ static	void	readSpreadMessage()
 
 void initialize(int argc, char ** argv){
     int i;
+    int j;
     debug = 0;
 
     if (argc < 2){
@@ -701,10 +700,17 @@ void initialize(int argc, char ** argv){
     }
 
     local_state.proc_ID = atoi(argv[1]);
+    local_state.updateIndex = -1;
+    local_state.status = NORMAL;
+
     for (i = 0 ; i < NUM_SERVERS ; i ++){
-	update_vector_init(&local_state.local_update_buffer.procVectors[i]);
+	for(j = 0 ; j < NUM_SERVERS ; j ++){
+	    local_state.update_matrix[i][j] = -1;
+	}
     }
     
+
+
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( User, "Server%s", argv[1] );
