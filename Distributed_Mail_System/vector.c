@@ -144,7 +144,7 @@ int email_vector_delete(email_vector * vector, mail_id target){
 
 int email_vector_insert(email_vector * vector, email * emailPtr){
     mail_id targetID;
-    email *email_head, *newEmail, **pp;
+    email *email_head, *newEmail, **pp, *temp;
 
     targetID = emailPtr->mailID;
     email_head = vector->emails;
@@ -163,11 +163,15 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     if(*pp && (*pp)->mailID.index == targetID.index){
         for(; *pp && (*pp)->mailID.procID <
 		targetID.index; pp=&(*pp)->next);
-        
+        temp = (*pp);
+        *pp = newEmail;
+        newEmail = temp;
+    }
+    else{
+        temp = (*pp);
         *pp = newEmail;
     }
-    else
-        *pp = newEmail;
+    (*pp)->next = temp;
 
     vector->size ++;
     return 0;
@@ -177,7 +181,7 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 /* searches given vector for target updateIndex associated with the process
  * to which this vector is associated
  * returns a pointer to this update, or NULL */
-update * update_vector_get(update_vector * vector, int updateIndex){
+/*update * update_vector_get(update_vector * vector, int updateIndex){
     update * targetUpdate;
     int i;
 
@@ -192,11 +196,19 @@ update * update_vector_get(update_vector * vector, int updateIndex){
     }
 
     return targetUpdate;
+}*/
+
+update * update_vector_get(update_vector * vector, int updateIndex){
+    update **pp;
+
+    for(pp=&vector->updates; *pp && (*pp)->mailID.index !=
+        updateIndex; pp=&(*pp)->next);
+
+    return (*pp);
+
 }
 
-
-
-int update_vector_insert(update_vector * vector, update * updatePtr){
+/*int update_vector_insert(update_vector * vector, update * updatePtr){
     update * newUpdateList;
     int index;
     int i;
@@ -216,39 +228,57 @@ int update_vector_insert(update_vector * vector, update * updatePtr){
     if (vector->size == 0){
 	memcpy(&vector->updates[0], updatePtr, sizeof(update));
 	vector->size ++;
-    }
+    }*/
 
-    else{
+    //else{
 	/* find index of update to insert after */
 	//currentEmail = vector->emails[size - 1];
-	index = vector->size - 1;	
+	/*index = vector->size - 1;*/	
 
 	/* find correct update index */
-	while(vector->updates[index].updateIndex >
+	/*while(vector->updates[index].updateIndex >
 		updatePtr->updateIndex){
 
 	    index --;
-	}
+	}*/
 
 	/* check if update is already in vector */
-	if (vector->updates[index].updateIndex == updatePtr->updateIndex){
+	/*if (vector->updates[index].updateIndex == updatePtr->updateIndex){
 	    perror("ERROR: tried to insert update that already has");
-	}
+	}*/
 
 	/* shift all 'higher' entries 'up' by 1 */
-	i = index + 1;
+	/*i = index + 1;
 	while (i <= vector->size){
 	    memcpy(&vector->updates[i + 1], &vector->updates[i], 
 		   sizeof(update));
 	    i ++;	    
-	}
+	}*/
 	
 	/* write in update */
-        memcpy(&vector->updates[index + 1], updatePtr, sizeof(update));
+    /*    memcpy(&vector->updates[index + 1], updatePtr, sizeof(update));
 	vector->size ++;
     }
     return 0;
-}
+}*/
 
+int update_vector_insert(update_vector * vector, update * updatePtr){
+    update **pp, *newUpdate, *temp;
+    
+    if((newUpdate = malloc(sizeof(update))) == NULL){
+        perror("Failed to allocate new memory in update_vector");
+	    return -1;
+    }
+
+    memcpy(newUpdate, updatePtr, sizeof(update));
+
+    for(pp=&vector->updates; *pp && (*pp)->mailID.index <
+        updatePtr->mailID.index; pp=&(*pp)->next);
+    
+    temp = *pp;
+    *pp = newUpdate;
+    (*pp)->next = temp;
+    
+}
 
 
