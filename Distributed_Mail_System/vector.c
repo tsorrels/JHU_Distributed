@@ -9,7 +9,7 @@
 #define NUM_UPDATES 20
 
 
-int email_vector_init(email_vector * vector){
+/*int email_vector_init(email_vector * vector){
     vector->size = 0;
     vector->emails = malloc(sizeof(email) * NUM_EMAILS);
     if (vector->emails == NULL){
@@ -28,7 +28,7 @@ int update_vector_init(update_vector * vector){
     }
     vector->capacity = NUM_UPDATES;
     return 0;
-}
+}*/
 
 
 
@@ -37,11 +37,11 @@ int update_vector_init(update_vector * vector){
  * indexes above down by 1 position
  * returns -1 if email does not exist in state
  * does not adjust memory allocated to vector */
-int email_vector_delete(email_vector * vector, mail_id target){
+/*int email_vector_delete(email_vector * vector, mail_id target){
     int i;
 
     /* search for lamport time stamp */
-    for (i = 0 ; i < vector->size ; i++) {
+    /*for (i = 0 ; i < vector->size ; i++) {
 	if (vector->emails[i].mailID.index == target.index &&
 	    vector->emails[i].mailID.procID == target.procID){
 	    break;
@@ -53,12 +53,28 @@ int email_vector_delete(email_vector * vector, mail_id target){
     }
 
     /* copy all 'higher' emails 'down' by 1 */
-    while (i < vector->size - 1){
+    /*while (i < vector->size - 1){
 	memcpy(&vector->emails[i], &vector->emails[i + 1], sizeof(email));
 	i++;
     }
     vector->size --;
     return 0;
+}*/
+
+int email_vector_delete(email_vector * vector, mail_id target){
+    email **pp, *temp;
+
+    for(pp=&vector->emails; *pp && ((*pp)->mailID.index !=
+		target.index || (*pp)->mailID.procID != target.procID);
+        pp=&(*pp)->next);
+
+    if(*pp){
+        temp = *pp;
+        *pp = (*pp)->next;
+        free(temp);
+        return 0;
+    }
+    return -1;
 }
 
 
@@ -66,7 +82,7 @@ int email_vector_delete(email_vector * vector, mail_id target){
  * searches for index of email that will be ordered before new mail
  * copies all entries 'above' target index up one index in array; this is O(n)
  * returns -1 if memory allocation fails and there is no room for new mail */
-int email_vector_insert(email_vector * vector, email * emailPtr){
+/*int email_vector_insert(email_vector * vector, email * emailPtr){
     email * newEmailList;
     //email * currentEmail;
     mail_id targetID;
@@ -94,17 +110,17 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     else{
 	/* find index of mail to insert after */
 	//currentEmail = vector->emails[size - 1];
-	index = vector->size - 1;	
+	/*index = vector->size - 1;	
 
 	/* find correct update index */
-	while(vector->emails[index].mailID.index >
+	/*while(vector->emails[index].mailID.index >
 		targetID.index){
 
 	    index --;
 	}
 
 	/* find correct procID */
-	if (vector->emails[index].mailID.index ==
+	/*if (vector->emails[index].mailID.index ==
 		targetID.index){
     	    while(vector->emails[index].mailID.procID >
 		    targetID.procID){
@@ -113,20 +129,50 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 	}
 
 	/* shift all 'higher' entries 'up' by 1 */
-	i = index + 1;
+	/*i = index + 1;
 	while (i <= vector->size){
 	    memcpy(&vector->emails[i + 1], &vector->emails[i], sizeof(email));
 	    i ++;	    
 	}
 	
 	/* write in new email */
-        memcpy(&vector->emails[index + 1], emailPtr, sizeof(email));
+      /*  memcpy(&vector->emails[index + 1], emailPtr, sizeof(email));
 	vector->size ++;
     }
     return 0;
+}*/
+
+int email_vector_insert(email_vector * vector, email * emailPtr){
+    mail_id targetID;
+    email *email_head, *newEmail, **pp;
+
+    targetID = emailPtr->mailID;
+    email_head = vector->emails;
+    newEmail = malloc(sizeof(email));
+
+    if(newEmail == NULL){
+        perror("Failed to allocate new memory in email_vector");
+	    return -1;
+    }
+    memcpy(newEmail, emailPtr, sizeof(email));
+    
+    /* find correct update index */
+    for(pp=&email_head; *pp && (*pp)->mailID.index <
+		targetID.index; pp=&(*pp)->next);
+
+    if(*pp && (*pp)->mailID.index == targetID.index){
+        for(; *pp && (*pp)->mailID.procID <
+		targetID.index; pp=&(*pp)->next);
+        
+        *pp = newEmail;
+    }
+    else
+        *pp = newEmail;
+
+    vector->size ++;
+    return 0;
+
 }
-
-
 
 /* searches given vector for target updateIndex associated with the process
  * to which this vector is associated

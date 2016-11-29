@@ -111,6 +111,7 @@ typedef struct update_type{
     char user_name[MAX_USER_LENGTH];
     mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];
+    struct update_type *next;
 } update;
 
 
@@ -150,6 +151,7 @@ typedef struct email_type{
     int date;
     int valid;
     char MESSAGE[MAX_MESSAGE_SIZE];
+    struct email_type * next;
 } email;
 
 
