@@ -183,6 +183,9 @@ typedef struct user_entry_type{
     int valid;
 } user_entry;
 
+typedef struct user_vector_type{
+	//
+} user_vector;
 
 /* State local to each server */
 typedef struct state_type{
@@ -191,12 +194,12 @@ typedef struct state_type{
     char server_group[MAX_GROUP_NAME]; /* spread group name for server */
     char private_group[MAX_GROUP_NAME]; /* server's private group */
     int updateIndex; /* counter of updates received, for LTS */
-    user_entry users[MAX_USERS];
+    //user_entry users[MAX_USERS];
+    user_vector users;
     update_matrix local_update_matrix;
     update_buffer local_update_buffer;
     connection connections[MAX_CONNECTIONS];
 } state;
-
 
 
 
@@ -213,6 +216,11 @@ extern email * email_vector_get(email_vector * vector, mail_id target);
 extern int update_vector_insert(update_vector * vector, update * updatePtr);
 extern int update_vector_delete(update_vector * vector, mail_id target);
 extern update * update_vector_get(update_vector * vector, int updateIndex);
+
+extern int user_vector_insert(user_vector * vector, char * name);
+extern int user_vector_delete(user_vector * vector, char * name);
+extern user * user_vector_get(user_vector * vector, char * name);
+
 
 
 

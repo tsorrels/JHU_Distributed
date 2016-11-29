@@ -200,10 +200,11 @@ user * findUser(char * userName){
  * userPtr must point to a valid user struct in state 
  * returns NULL if email is not in state for this user*/
 email * findEmail(user * userPtr, mail_id targetID){
-    int j;
+    //int j;
     email * emailPtr;
-    emailPtr = NULL;
-
+    emailPtr = email_vector_insert(userPtr->emails.vector, targetID);  
+    
+    /*
     j = 0;
     while(j < userPtr->emails.size){
 	if (userPtr->emails.emails[j].valid == 1 &&
@@ -213,7 +214,7 @@ email * findEmail(user * userPtr, mail_id targetID){
 	    emailPtr = &userPtr->emails.emails[j];
 	    break;
 	}
-    }
+	}*/
     return emailPtr;
 }
 
