@@ -584,21 +584,23 @@ void processRegularMessage(char * sender, int num_groups,
 
     }
 
-
     else if (messagePtr->header.type == MATRIX){
-	// execute
-
 	if (local_state.status != RECONCILE){
 	    if (debug)
 		printf("Received matrix message, but not reconciling\n");
-
-	    // update local matrix
-	    updateMatrix(messagePtr);
-	    if (checkLowestProcID()){
-		sendServerUpdates(messagePtr->header.proc_num);
-	    }
+	    /* do nothing */
 	}
 
+	/* status == RECONCILE */
+	else{
+	    /* update local matrix */
+	    updateMatrix(messagePtr);
+
+	    /* send updates only if lowest server in partition */
+	    if (checkLowestProcID()){
+		sendServerUpdates(messagePtr->header.proc_num);
+	    }    
+	}
     }
 
     else{
