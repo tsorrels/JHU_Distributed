@@ -175,9 +175,11 @@ void updateMatrix(message * messagePtr){
 	}
 	for (j = 0 ; j < NUM_SERVERS ; j ++){
 	    /* compare if this is more current data */
-	    if (sentMatrix->latest_update[i][j] > localMatrix->latest_update[i][j]){
+	    if (sentMatrix->latest_update[i][j] > 
+		localMatrix->latest_update[i][j]){
 		/* update this vector */
-		localMatrix->latest_update[i][j] = sentMatrix->latest_update[i][j];
+		localMatrix->latest_update[i][j] = 
+		    sentMatrix->latest_update[i][j];
 	    }
 	}
     }
