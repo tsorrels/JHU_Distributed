@@ -41,6 +41,7 @@ typedef enum {
     COMMAND,
     UPDATE,
     MATRIX,
+    REPLY,
 } message_type;
 
 /* Update message types */
@@ -100,6 +101,7 @@ typedef struct command_type{
     char user_name[MAX_USER_LENGTH];
     mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];
+    char private_group[SIZE_PRIVATE_GROUP];
 } command;
 
 

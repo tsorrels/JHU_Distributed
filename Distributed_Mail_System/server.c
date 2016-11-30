@@ -154,7 +154,7 @@ int checkLowestProcID()
 {
 
 
-
+    return 1;
 }
 
 void sendServerUpdates(int procID){
@@ -555,28 +555,60 @@ int applyUpdate(char * mess){
 }
 
 
+message * generateResponse(char * mess){
+    command * commandPtr;
+    message * messagePtr;
+    message * replyMessage;
+
+    messagePtr = (message *) mess;
+    commandPtr = (command *) messagePtr->payload;
+    messagePtr = malloc(sizeof(message));
+    messagePtr->header.type = REPLY;
+
+
+    return messagePtr;    
+}
+
+
+void sendToClient(char groupName[SIZE_PRIVATE_GROUP], message * messagePtr)
+{
+    int ret;
+    ret= SP_multicast(Mbox, AGREED_MESS,(const char *) groupName,
+		      1, sizeof(message), (const char *)(messagePtr) );    
+}
+
 
 /* should this function return anything? */
 void processRegularMessage(char * sender, int num_groups, 
 			   char groups[][MAX_GROUP_NAME], 
 			   int16 mess_type, char * mess){
-
-    int createUpdate = 0;
+    char * privateGroup;
     message * updateMessage;
-
+    command * commandPtr;
+    message * responseMessage;
     message * messagePtr;
-    messagePtr= (message *) mess;
-    if (messagePtr->header.type == COMMAND){
-	// execute client stuff
-	// set createUpdate
+    int createUpdate = 0;
 
-	
-	// generate update
+    messagePtr= (message *) mess;
+    
+
+    if (messagePtr->header.type == COMMAND){
+	commandPtr = (command *) messagePtr->payload;
+	privateGroup = commandPtr->private_group;
+
+	if (commandPtr->type==NEWMAILCMD || commandPtr->type ==NEWUSERCMD ||
+	    commandPtr->type==DELETEMAILCMD || commandPtr->type ==READMAILCMD){
+	    createUpdate = 1;
+	}
+
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
 	    sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
+	responseMessage = generateResponse(mess);// mallocs a message
+	sendToClient(privateGroup, responseMessage);
+	free(responseMessage); // frees response message
     }
 
     else if (messagePtr->header.type == UPDATE){
@@ -606,18 +638,6 @@ void processRegularMessage(char * sender, int num_groups,
     else{
 	perror("ERROR: Did not recognize type in processRegularMessage");
     }
-    
-
-    /* if this is from a client */
-
-    
-
-
-
-
-    /* if this is from a server */
-
-
 
 }
 
