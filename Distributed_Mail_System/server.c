@@ -149,6 +149,14 @@ void sendUpdate(message * updateMessage){
 }
 
 
+
+int checkLowestProcID()
+{
+
+
+
+}
+
 void sendServerUpdates(int procID){
     
 
@@ -586,6 +594,9 @@ void processRegularMessage(char * sender, int num_groups,
 
 	    // update local matrix
 	    updateMatrix(messagePtr);
+	    if (checkLowestProcID()){
+		sendServerUpdates(messagePtr->header.proc_num);
+	    }
 	}
 
     }
