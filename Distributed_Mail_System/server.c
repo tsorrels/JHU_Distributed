@@ -87,9 +87,11 @@ message * generateUpdate(char * mess){
     message * messagePtr;
     message * updateMessage;
     update * updatePtr;
+    email * emailPtr;
 
     messagePtr = (message *) mess;
     commandPtr = (command *) messagePtr->payload;
+    emailPtr = (email *)commandPtr->payload;
     updateMessage = malloc(sizeof(message));
     updateMessage->header.type = UPDATE;
 
@@ -97,7 +99,7 @@ message * generateUpdate(char * mess){
     updatePtr = (update *) updateMessage->payload;
     updatePtr->procID = local_state.proc_ID;     //modify
     updatePtr->updateIndex = local_state.updateIndex + 1;
-    memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
+    memcpy(updatePtr->user_name, emailPtr->from, MAX_USER_LENGTH);
 
     if (commandPtr->type == NEWUSERCMD){
 	updatePtr->type = NEWUSERMSG;
@@ -105,19 +107,19 @@ message * generateUpdate(char * mess){
 
     else if (commandPtr->type == DELETEMAILCMD){
 	updatePtr->type = DELETEMAILMSG;
-	updatePtr->mailID = commandPtr->mailID;
+	updatePtr->mailID = emailPtr->mailID;
     }
 
     else if (commandPtr->type == READMAILCMD){
 	updatePtr->type = READMAILMSG;
-	updatePtr->mailID = commandPtr->mailID;
+	updatePtr->mailID = emailPtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
 	// I dont think this memcpy is necessary
     }
 
     else if (commandPtr->type == NEWMAILCMD){
 	updatePtr->type = NEWMAILMSG;
-	updatePtr->mailID = commandPtr->mailID;
+	updatePtr->mailID = emailPtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
     }
 

@@ -15,41 +15,18 @@ int maxMailNum;
 char private_group[MAX_GROUP_NAME];
 char server_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
+static  char    Spread_name[80];
+static	char	User[80];
+static  int     To_exit = 0;
 email *emailHead;
-
-void connectClient(){
-    int ret;
-    sp_time test_timeout;
-
-    
-    test_timeout.sec = TEST_TIMEOUT_SEC;
-    test_timeout.usec = TEST_TIMEOUT_USEC;
-
-    sprintf( Spread_name, "4803");
-    ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
-			      private_group, test_timeout );
-    if( ret != ACCEPT_SESSION ) 
-    {
-	SP_error( ret );
-	Bye();
-    }
-    
-    printf("User: connected to %s with private group %s\n", Spread_name, 
-	   Private_group );
-
-    E_init();
-    
-    E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
-
-    E_handle_events();
-    
-}
 
 int sendCommand(command *newCommand){
     int ret;
-
-    ret= SP_multicast(Mbox, AGREED_MESS,(const char *)server_group,
-		      1, sizeof(command), (const char *)(newCommand) );
+    message mess;
+    mess.header.type = COMMAND;
+    memcpy(mess.payload, newCommand, sizeof(command));
+    ret= SP_multicast(Mbox, AGREED_MESS,(const char *)server_group, 
+                        1, sizeof(message), (const char *)(&mess) );
 
     if( ret < 0 ) 
     {
@@ -59,48 +36,55 @@ int sendCommand(command *newCommand){
     return ret;
 }
 
-void processRegularMessage(command *mess){
+void processRegularMessage(message *mess){
     command_type commandType;
-    email **pp, *newEmail;
-    commandType = mess->type;
+    email **pp, *newEmail, *mail;
+    command *com;
+    com = (command *)mess->payload;
+    commandType = com->type;
     
     if(commandType == LISTMAILCMD){
-        if(ret != -1)
-            maxMailNum = ret;
+        if(com->ret != -1)
+            maxMailNum = com->ret;
         else{            
             for(pp=&emailHead; *pp; pp=&(*pp)->next);
 
             if((newEmail = malloc(sizeof(email))) == NULL)
                 printf("No space to store a mail\n");
             else{
+                memcpy(newEmail, com->payload, sizeof(email));
                 *pp = newEmail;
                 (*pp)->next = NULL;
             }
         }
     }
     else if(commandType == NEWUSERCMD){
-        if(mess->ret == -1)
+        if(com->ret == -1)
             printf("Could not login with the username\n");
     }
     else if(commandType == NEWMAILCMD){
-        if(mess->ret == -1)
+        if(com->ret == -1)
             printf("Could not send the mail\n");
     }
     else if(commandType == DELETEMAILCMD){
-        if(mess->ret == -1)
+        if(com->ret == -1)
             printf("Could not delete the mail\n");
     }
     else if(commandType == READMAILCMD){
-        if(mess->ret == -1)
+        if(com->ret == -1)
             printf("Could not read the mail\n");
-        else
-            printf("%s\n", mess->mail.message);
+        else{
+            mail = (email *)com->payload;
+            printf("%s\n", mail->message);
+        }
     }
     else if(commandType == SHOWMEMBERSHIPCMD){
-        if(mess->ret == -1)
+        if(com->ret == -1)
             printf("Cannot not showmembership the mail\n");
-        else
-            printf("%s\n", mess->mail.message);
+        else{
+            mail = (email *)com->payload;
+            printf("%s\n", mail->message);
+        }
     }
     else{
         printf("Undefined command type\n");
@@ -146,21 +130,57 @@ static void readSpreadMessage(){
 
     if( Is_regular_mess( service_type ) )
     {
-        processRegularMessage((command *)mess);
+        processRegularMessage((message *)mess);
     }
     else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 }
 
+void Bye(){
+    printf("Exiting\n");
+    exit(0);
+}
+
+void connectClient(){
+    int ret;
+    sp_time test_timeout;
+
+    
+    test_timeout.sec = TEST_TIMEOUT_SEC;
+    test_timeout.usec = TEST_TIMEOUT_USEC;
+
+    sprintf( Spread_name, "4803");
+    ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
+			      private_group, test_timeout );
+    if( ret != ACCEPT_SESSION ) 
+    {
+	SP_error( ret );
+	Bye();
+    }
+    
+    printf("User: connected to %s with private group %s\n", Spread_name, 
+	   private_group );
+
+    E_init();
+    
+    E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
+
+    E_handle_events();
+    
+}
+
 void listHeaders(){
     command newCommand;
+    email mail;
     newCommand.type = LISTMAILCMD;
-    strcpy(newCommand.mail.from, userName);
+    strcpy(mail.from, userName);
     strcpy(newCommand.private_group, private_group);
+    memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
 
 void mailSetup(){
     command newCommand;
+    email mail;
     char sendTo[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
 
@@ -170,44 +190,48 @@ void mailSetup(){
     gets(subject);
 
     newCommand.type = NEWMAILCMD;
-    strcpy(newCommand.mail.from, userName);
+    strcpy(mail.from, userName);
     strcpy(newCommand.private_group, private_group);
-    strcpy(newCommand.mail.to, sendTo);
-    strcpy(newCommand.mail.subject, subject);
+    strcpy(mail.to, sendTo);
+    strcpy(mail.subject, subject);
+    memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
 
 void deleteMail(int mailNum){
     command newCommand;
+    email mail;
     email *head;
     int i;
     newCommand.type = DELETEMAILCMD;
-    strcpy(newCommand.mail.from, userName);
     strcpy(newCommand.private_group, private_group);
     
     for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
-    memcpy(&newCommand.mail, head, sizeof(email));
+    memcpy(&mail, head, sizeof(email));
+    memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
 
 void readMail(int mailNum){
     command newCommand;
-    email *head;
+    email *head, mail;
     int i;
     newCommand.type = READMAILCMD;
-    strcpy(newCommand.mail.from, userName);
     strcpy(newCommand.private_group, private_group);
 
     for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
-    memcpy(&newCommand.mail, head, sizeof(email));
+    memcpy(&mail, head, sizeof(email));
+    memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
 
 void printMembership(){
     command newCommand;
+    email mail;
     newCommand.type = SHOWMEMBERSHIPCMD;
-    strcpy(newCommand.mail.from, userName);
+    strcpy(mail.from, userName);
     strcpy(newCommand.private_group, private_group);
+    memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
 

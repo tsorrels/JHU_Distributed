@@ -11,6 +11,7 @@
 #define MAX_UPDATE 1000
 #define SIZE_PRIVATE_GROUP 256 ///// can be set from spread header
 #define MAX_CONNECTIONS 50
+#define MAX_COMMAND_LENGTH 30
 #define NUM_SERVERS 5
 #define PORT 18537
 
@@ -94,21 +95,6 @@ typedef struct mail_id_type{
     int index; // global counter, can count emails or udpates
 } mail_id;
 
-
-/* Structure for command */
-typedef struct command_type{
-    command_type type;
-    int ret;
-    /*char user_name[MAX_USER_LENGTH];
-    char send_to[MAX_USER_LENGTH];
-    char subject[MAX_SUBJECT_LENGTH];
-    mail_id mailID;
-    char payload[UPDATE_PAYLOAD_SIZE];*/
-    email mail;
-    char private_group[SIZE_PRIVATE_GROUP];
-} command;
-
-
 /* Structure for update */
 typedef struct update_type{
     update_type type;
@@ -161,8 +147,18 @@ typedef struct email_type{
     struct email_type * next;
 } email;
 
-
-
+/* Structure for command */
+typedef struct command_type{
+    command_type type;
+    int ret;
+    /*char user_name[MAX_USER_LENGTH];
+    char send_to[MAX_USER_LENGTH];
+    char subject[MAX_SUBJECT_LENGTH];
+    mail_id mailID;*/
+    char payload[UPDATE_PAYLOAD_SIZE];
+    //email mail;
+    char private_group[SIZE_PRIVATE_GROUP];
+} command;
 
 /* For vector library */
 typedef struct email_vector_type{
