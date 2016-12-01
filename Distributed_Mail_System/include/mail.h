@@ -202,6 +202,7 @@ typedef struct state_type{
     user_vector users;
     update_matrix local_update_matrix;
     update_buffer local_update_buffer;
+    int recoveryFD;
     connection connections[MAX_CONNECTIONS];
 } state;
 
@@ -209,7 +210,7 @@ typedef struct state_type{
 
 
 /* function declarations */
-extern void loadState();
+extern void loadState(state * local_state);
 
 //extern int email_vector_init(email_vector * vector);
 extern int email_vector_insert(email_vector * vector, email * emailPtr);

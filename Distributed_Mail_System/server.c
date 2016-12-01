@@ -59,7 +59,7 @@ int main (int argc, char ** argv)
 	Bye();
     }
     
-    loadState(); // define in recover.c
+    loadState(&local_state); // define in recover.c
 
 
     printf("User: connected to %s with private group %s\n", Spread_name, 
