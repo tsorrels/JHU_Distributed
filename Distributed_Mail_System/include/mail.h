@@ -13,7 +13,8 @@
 #define MAX_CONNECTIONS 50
 #define MAX_COMMAND_LENGTH 30
 #define NUM_SERVERS 5
-#define PORT 18537
+//#define PORT 18537
+#define PORT 10470
 
 #define TEST_TIMEOUT_SEC 5
 #define TEST_TIMEOUT_USEC 0
