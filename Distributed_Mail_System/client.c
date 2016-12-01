@@ -164,30 +164,7 @@ void Bye(){
 }
 
 void connectClient(){
-    int ret;
-    sp_time test_timeout;
-
     
-    test_timeout.sec = TEST_TIMEOUT_SEC;
-    test_timeout.usec = TEST_TIMEOUT_USEC;
-
-    sprintf( Spread_name, "4803");
-    ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
-			      private_group, test_timeout );
-    if( ret != ACCEPT_SESSION ) 
-    {
-	SP_error( ret );
-	Bye();
-    }
-    
-    printf("User: connected to %s with private group %s\n", Spread_name, 
-	   private_group );
-
-    E_init();
-    
-    E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
-
-    E_handle_events();
     
 }
 
@@ -275,7 +252,7 @@ int parseCommand(char *command){
     l = strlen(command);
 
     if(command[0] == 'u'){
-        if(l <= 2){
+        if(serverNum == 0 || l <= 2){
             printf("Incorrect use\n");
             return -1;
         }
@@ -284,7 +261,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'c'){
-        if(strlen(userName) == 0 || l <= 2){
+        if(l <= 2){
             printf("Incorrect use\n");
             return -1;
         }
@@ -369,22 +346,54 @@ int parseCommand(char *command){
     return 0;
     
 }
-int main (int argc, char ** argv)
-{
+
+void userCommand(){
     char command[MAX_COMMAND_LENGTH];
     int r = -1;
+    if(!curr_count){
+        //if(r == -1)
+            //displayMenu();
 
-    connectClient();
-
-    while(1){
-        if(!curr_count){
-            if(r == -1)
-                displayMenu();
-
-            gets(command);
-            r = parseCommand(command);
-        }
+        gets(command);
+        r = parseCommand(command);
+        printf("\nUser> ");
+        fflush(stdout);
     }
 
-    return 0;
+}
+
+int main (int argc, char ** argv)
+{
+
+    int ret;
+    sp_time test_timeout;
+
+    
+    test_timeout.sec = TEST_TIMEOUT_SEC;
+    test_timeout.usec = TEST_TIMEOUT_USEC;
+
+    sprintf( Spread_name, "10470");
+    ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
+			      private_group, test_timeout );
+    if( ret != ACCEPT_SESSION ) 
+    {
+	SP_error( ret );
+	Bye();
+    }
+    
+    printf("User: connected to %s with private group %s\n", Spread_name, 
+	   private_group );
+
+    E_init();
+    
+    E_attach_fd( 0, READ_FD, userCommand, 0, NULL, LOW_PRIORITY );
+    
+    E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
+    
+    displayMenu();
+    printf("\nUser> ");
+    fflush(stdout);
+
+    E_handle_events();
+
 }
