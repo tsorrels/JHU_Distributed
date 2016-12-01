@@ -98,9 +98,13 @@ typedef struct mail_id_type{
 /* Structure for command */
 typedef struct command_type{
     command_type type;
-    char user_name[MAX_USER_LENGTH];
+    int ret;
+    /*char user_name[MAX_USER_LENGTH];
+    char send_to[MAX_USER_LENGTH];
+    char subject[MAX_SUBJECT_LENGTH];
     mail_id mailID;
-    char payload[UPDATE_PAYLOAD_SIZE];
+    char payload[UPDATE_PAYLOAD_SIZE];*/
+    email mail;
     char private_group[SIZE_PRIVATE_GROUP];
 } command;
 
@@ -153,7 +157,7 @@ typedef struct email_type{
     char subject[MAX_SUBJECT_LENGTH];
     int date;
     int valid;
-    char MESSAGE[MAX_MESSAGE_SIZE];
+    char message[MAX_MESSAGE_SIZE];
     struct email_type * next;
 } email;
 

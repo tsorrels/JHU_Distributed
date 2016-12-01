@@ -15,16 +15,15 @@ int maxMailNum;
 char private_group[MAX_GROUP_NAME];
 char server_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
+email *emailHead;
 
-connectClient(){
+void connectClient(){
     int ret;
     sp_time test_timeout;
 
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
     test_timeout.usec = TEST_TIMEOUT_USEC;
-
-    sprintf(server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( Spread_name, "4803");
     ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
@@ -60,8 +59,52 @@ int sendCommand(command *newCommand){
     return ret;
 }
 
-processRegularMessage(char *mess){
+void processRegularMessage(command *mess){
+    command_type commandType;
+    email **pp, *newEmail;
+    commandType = mess->type;
     
+    if(commandType == LISTMAILCMD){
+        if(ret != -1)
+            maxMailNum = ret;
+        else{            
+            for(pp=&emailHead; *pp; pp=&(*pp)->next);
+
+            if((newEmail = malloc(sizeof(email))) == NULL)
+                printf("No space to store a mail\n");
+            else{
+                *pp = newEmail;
+                (*pp)->next = NULL;
+            }
+        }
+    }
+    else if(commandType == NEWUSERCMD){
+        if(mess->ret == -1)
+            printf("Could not login with the username\n");
+    }
+    else if(commandType == NEWMAILCMD){
+        if(mess->ret == -1)
+            printf("Could not send the mail\n");
+    }
+    else if(commandType == DELETEMAILCMD){
+        if(mess->ret == -1)
+            printf("Could not delete the mail\n");
+    }
+    else if(commandType == READMAILCMD){
+        if(mess->ret == -1)
+            printf("Could not read the mail\n");
+        else
+            printf("%s\n", mess->mail.message);
+    }
+    else if(commandType == SHOWMEMBERSHIPCMD){
+        if(mess->ret == -1)
+            printf("Cannot not showmembership the mail\n");
+        else
+            printf("%s\n", mess->mail.message);
+    }
+    else{
+        printf("Undefined command type\n");
+    }
 }
 
 static void readSpreadMessage(){
@@ -103,7 +146,7 @@ static void readSpreadMessage(){
 
     if( Is_regular_mess( service_type ) )
     {
-        processRegularMessage(mess);
+        processRegularMessage((command *)mess);
     }
     else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 }
@@ -111,24 +154,61 @@ static void readSpreadMessage(){
 void listHeaders(){
     command newCommand;
     newCommand.type = LISTMAILCMD;
-    strcpy(newCommand.user_name, userName);
+    strcpy(newCommand.mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
     sendCommand(&newCommand);
 }
 
-mailSetup(){
-    
+void mailSetup(){
+    command newCommand;
+    char sendTo[MAX_USER_LENGTH];
+    char subject[MAX_SUBJECT_LENGTH];
+
+    printf("to: ");
+    gets(sendTo);
+    printf("subject: ");
+    gets(subject);
+
+    newCommand.type = NEWMAILCMD;
+    strcpy(newCommand.mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
+    strcpy(newCommand.mail.to, sendTo);
+    strcpy(newCommand.mail.subject, subject);
+    sendCommand(&newCommand);
 }
 
-deleteMail(){
+void deleteMail(int mailNum){
+    command newCommand;
+    email *head;
+    int i;
+    newCommand.type = DELETEMAILCMD;
+    strcpy(newCommand.mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
     
+    for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
+    memcpy(&newCommand.mail, head, sizeof(email));
+    sendCommand(&newCommand);
 }
 
-readMail(){
-    
+void readMail(int mailNum){
+    command newCommand;
+    email *head;
+    int i;
+    newCommand.type = READMAILCMD;
+    strcpy(newCommand.mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
+
+    for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
+    memcpy(&newCommand.mail, head, sizeof(email));
+    sendCommand(&newCommand);
 }
 
-printMembership(){
-    
+void printMembership(){
+    command newCommand;
+    newCommand.type = SHOWMEMBERSHIPCMD;
+    strcpy(newCommand.mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
+    sendCommand(&newCommand);
 }
 
 void displayMenu(){
@@ -246,6 +326,8 @@ int main (int argc, char ** argv)
 {
     char command[MAX_COMMAND_LENGTH];
     int r = -1;
+
+    connectClient();
 
     while(1){
         if(r == -1)
