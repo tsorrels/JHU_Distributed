@@ -72,6 +72,29 @@ int main (int argc, char ** argv)
     sprintf( group, SERVER_GROUP_NAME);
     ret = SP_join( Mbox, group );
     if( ret < 0 ) SP_error( ret );
+    switch(local_state.proc_ID){
+    case 1:
+        ret = SP_join( Mbox, SERVER_1_GROUP );
+	break;
+
+    case 2:
+        ret = SP_join( Mbox, SERVER_2_GROUP );
+	break;
+
+    case 3:
+        ret = SP_join( Mbox, SERVER_3_GROUP );
+	break;
+
+    case 4:
+        ret = SP_join( Mbox, SERVER_4_GROUP );
+	break;
+
+    case 5:
+        ret = SP_join( Mbox, SERVER_5_GROUP );
+	break;
+    }
+    
+    if( ret < 0 ) SP_error( ret );
 
     E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
 

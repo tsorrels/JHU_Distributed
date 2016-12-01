@@ -22,10 +22,10 @@
 
 #define SERVER_GROUP_NAME "abrahmb1tsorrel3servers"
 #define SERVER_1_GROUP "abrahmb1tsorrel3server1"
-#define SERVER_1_GROUP "abrahmb1tsorrel3server2"
-#define SERVER_1_GROUP "abrahmb1tsorrel3server3"
-#define SERVER_1_GROUP "abrahmb1tsorrel3server4"
-#define SERVER_1_GROUP "abrahmb1tsorrel3server5"
+#define SERVER_2_GROUP "abrahmb1tsorrel3server2"
+#define SERVER_3_GROUP "abrahmb1tsorrel3server3"
+#define SERVER_4_GROUP "abrahmb1tsorrel3server4"
+#define SERVER_5_GROUP "abrahmb1tsorrel3server5"
 
 /* for spread */
 #define MAX_MESSLEN     102400
