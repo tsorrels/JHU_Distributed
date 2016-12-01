@@ -18,6 +18,7 @@ static  mailbox Mbox;
 static  char    Spread_name[80];
 static	char	User[80];
 static  int     To_exit = 0;
+static  int     curr_count = 0;
 email *emailHead;
 
 int sendCommand(command *newCommand){
@@ -36,6 +37,23 @@ int sendCommand(command *newCommand){
     return ret;
 }
 
+void displayList(){
+    email *mail;
+    int c = 0;
+    printf("Username: %s\n",userName);
+    printf("Server Index: %d\n", serverNum);
+    for(mail = emailHead; mail; mail = mail->next){
+        if(mail->read)
+            printf("%d Sender: %s, Subject: %s\n", mail->from, mail->subject);
+    }
+    for(mail = emailHead; mail; mail = mail->next){
+        if(!mail->read)
+            printf("%d Sender: %s, Subject: %s\n", mail->from, mail->subject);
+    }
+    
+    curr_count = 0;
+}
+
 void processRegularMessage(message *mess){
     command_type commandType;
     email **pp, *newEmail, *mail;
@@ -44,8 +62,10 @@ void processRegularMessage(message *mess){
     commandType = com->type;
     
     if(commandType == LISTMAILCMD){
-        if(com->ret != -1)
+        if(com->ret != -1){
             maxMailNum = com->ret;
+            curr_count = 0;
+        }
         else{            
             for(pp=&emailHead; *pp; pp=&(*pp)->next);
 
@@ -56,6 +76,9 @@ void processRegularMessage(message *mess){
                 *pp = newEmail;
                 (*pp)->next = NULL;
             }
+            curr_count++;
+            if(curr_count == maxMailNum)
+                displayList();
         }
     }
     else if(commandType == NEWUSERCMD){
@@ -354,11 +377,13 @@ int main (int argc, char ** argv)
     connectClient();
 
     while(1){
-        if(r == -1)
-            displayMenu();
+        if(!curr_count){
+            if(r == -1)
+                displayMenu();
 
-        gets(command);
-        r = parseCommand(command);
+            gets(command);
+            r = parseCommand(command);
+        }
     }
 
     return 0;
