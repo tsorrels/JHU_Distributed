@@ -819,7 +819,9 @@ void initialize(int argc, char ** argv){
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( User, "Server%s", argv[1] );
-    sprintf( Spread_name, "4803"); // TODO: pull this out to config file
+    //    sprintf( Spread_name, "4803"); // TODO: pull this out to config file
+    sprintf( Spread_name, "10470"); // TODO: pull this out to config file
+    //sprintf( "10470"); // TODO: pull this out to config file
 
 }
 
