@@ -683,6 +683,9 @@ static	void	readSpreadMessage()
     int		 i,j;
     int		 ret;
 
+    if (debug)
+        printf("ran readSpreadMessage\n");
+    
     service_type = 0;
 
     ret = SP_receive( Mbox, &service_type, sender, 100, &num_groups, 
@@ -801,6 +804,7 @@ void initialize(int argc, char ** argv){
     if (argc == 3){
 	if (atoi(argv[2]) == 1){
 	    debug = 1;
+	    printf("debug set\n");
 	}
     }
 
