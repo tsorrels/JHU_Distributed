@@ -157,8 +157,8 @@ typedef struct email_type{
 typedef struct command_type{
     command_type type;
     int ret;
-    /*char user_name[MAX_USER_LENGTH];
-    char send_to[MAX_USER_LENGTH];
+    char user_name[MAX_USER_LENGTH];
+    /*char send_to[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
     mail_id mailID;*/
     char payload[UPDATE_PAYLOAD_SIZE];
