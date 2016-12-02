@@ -847,6 +847,7 @@ void initialize(int argc, char ** argv){
     local_state.proc_ID = atoi(argv[1]);
     local_state.updateIndex = -1;
     local_state.status = NORMAL;
+    local_state.users.user_head = NULL;
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	for(j = 0 ; j < NUM_SERVERS ; j ++){
