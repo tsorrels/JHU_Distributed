@@ -169,7 +169,7 @@ void loginUser(){
     command newCommand;
     email mail;
     newCommand.type = NEWUSERCMD;
-    strcpy(mail.from, userName);
+    strcpy(newCommand.user_name, userName);
     strcpy(newCommand.private_group, private_group);
     memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
@@ -180,7 +180,7 @@ void listHeaders(){
     command newCommand;
     email mail;
     newCommand.type = LISTMAILCMD;
-    strcpy(mail.from, userName);
+    strcpy(newCommand.user_name, userName);
     strcpy(newCommand.private_group, private_group);
     memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
@@ -202,6 +202,7 @@ void mailSetup(){
 
     newCommand.type = NEWMAILCMD;
     strcpy(mail.from, userName);
+    strcpy(newCommand.user_name, userName);
     strcpy(newCommand.private_group, private_group);
     strcpy(mail.to, sendTo);
     strcpy(mail.subject, subject);
@@ -217,6 +218,7 @@ void deleteMail(int mailNum){
     int i;
     newCommand.type = DELETEMAILCMD;
     strcpy(newCommand.private_group, private_group);
+    strcpy(newCommand.user_name, userName);
     
     for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
     memcpy(&mail, head, sizeof(email));
@@ -230,6 +232,7 @@ void readMail(int mailNum){
     int i;
     newCommand.type = READMAILCMD;
     strcpy(newCommand.private_group, private_group);
+    strcpy(newCommand.user_name, userName);
 
     for(head = emailHead, i = 1; head && i != mailNum; head = head->next, i++);
     memcpy(&mail, head, sizeof(email));
@@ -241,7 +244,7 @@ void printMembership(){
     command newCommand;
     email mail;
     newCommand.type = SHOWMEMBERSHIPCMD;
-    strcpy(mail.from, userName);
+    strcpy(newCommand.user_name, userName);
     strcpy(newCommand.private_group, private_group);
     memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);

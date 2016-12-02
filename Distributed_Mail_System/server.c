@@ -122,7 +122,7 @@ message * generateUpdate(char * mess){
     updatePtr = (update *) updateMessage->payload;
     updatePtr->procID = local_state.proc_ID;     //modify
     updatePtr->updateIndex = local_state.updateIndex + 1;
-    memcpy(updatePtr->user_name, emailPtr->from, MAX_USER_LENGTH);
+    memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
 
     if (commandPtr->type == NEWUSERCMD){
 	updatePtr->type = NEWUSERMSG;
@@ -627,16 +627,43 @@ int applyUpdate(char * mess){
 
 message * generateResponse(char * mess){
     command * commandPtr;
-    message * messagePtr;
+    message *messagePtr, *newMessagePtr;
     message * replyMessage;
+    email *emailPtr, *newEmailPtr;
+    mail_id targetID;
+    user *userPtr;
 
     messagePtr = (message *) mess;
     commandPtr = (command *) messagePtr->payload;
-    messagePtr = malloc(sizeof(message));
-    messagePtr->header.type = REPLY;
+    emailPtr = (email *)commandPtr->payload;
+    newMessagePtr = malloc(sizeof(message));
+    newMessagePtr->header.type = REPLY;
+    newCommandPtr = (command *) newMessagePtr->payload;
+    targetID = emailPtr->mailID;
+    
+    if(commandPtr->type == READMAILCMD){
+        userPtr = findUser(commandPtr->user_name);
+        if (userPtr != NULL){
+            newEmailPtr = findEmail(userPtr, targetID);
+            if (newEmailPtr != NULL{
+                memcpy(newCommandPtr->payload, newEmailPtr, sizeof(email));
+                newCommandPtr->ret = 0;
+            }
+            else
+                newCommandPtr->ret = -1;
+        }
+        else
+            newCommandPtr->ret = -1;
+    }
+    else if(commandPtr->type == LISTMAILCMD){
+        
+    }
+    else if(commandPtr->type == SHOWMEMBERSHIPCMD){
+        
+    }
 
-
-    return messagePtr;    
+    sendToClient(commandPtr->private_group, newMessagePtr);
+    free(newMessagePtr);
 }
 
 
@@ -678,7 +705,6 @@ void processRegularMessage(char * sender, int num_groups,
 	    free(updateMessage); // frees update message		
 	}
 	responseMessage = generateResponse(mess);// mallocs a message
-	sendToClient(privateGroup, responseMessage);
 	free(responseMessage); // frees response message
     }
 
