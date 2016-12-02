@@ -210,6 +210,7 @@ typedef struct state_type{
     update_buffer local_update_buffer;
     int recoveryFD;
     connection connections[MAX_CONNECTIONS];
+    char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
 } state;
 
 

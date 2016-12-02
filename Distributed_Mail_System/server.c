@@ -627,6 +627,8 @@ int applyUpdate(char * mess){
 
 message * generateResponse(char * mess){
     command * commandPtr;
+    command * newCommandPtr;
+
     message *messagePtr, *newMessagePtr;
     message * replyMessage;
     email *emailPtr, *newEmailPtr;
@@ -645,7 +647,7 @@ message * generateResponse(char * mess){
         userPtr = findUser(commandPtr->user_name);
         if (userPtr != NULL){
             newEmailPtr = findEmail(userPtr, targetID);
-            if (newEmailPtr != NULL{
+            if (newEmailPtr != NULL){
                 memcpy(newCommandPtr->payload, newEmailPtr, sizeof(email));
                 newCommandPtr->ret = 0;
             }
