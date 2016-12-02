@@ -429,9 +429,11 @@ int deleteMail(update * deleteUpdate){
 }
 
 
-/* scan state for first invalid user entry and add user 
- * user_name must be null terminated 
- * does not check for duplicate user names*/
+/* insert user into local state of user_vecotor
+ * return 0 if user insertion executed
+ * return 1 if user already exists
+ * return -1 if vector_insert fails
+ * user_name must be null terminated */
 int addUser(char * user_name){
     //int i;
     //int index;
@@ -461,11 +463,19 @@ int addUser(char * user_name){
 	}*/
     checkError = user_vector_insert(&local_state.users, user_name);
 
-    if (checkError < 0){
-	perror("ERROR: no more room for new users\n");
-	return -1;
+    if (checkError > 0){
+        if(debug)
+  	    printf("User already exists in state\n");
+	return checkError;
     }
 
+
+    if (checkError < 0){
+      	perror("ERROR: system failuer in vector_insert");
+	return checkError;
+    }
+
+    
     return 0;
 }
 
@@ -754,7 +764,10 @@ static	void	readSpreadMessage()
 	if     ( Is_reg_memb_mess( service_type ) )
 	{
 	    // num_groups loaded with number of members in group
+	    //message * dummyMessage = malloc(sizeof(message));
+	    //sendUpdate(dummyMessage);
 
+	  
 	    printf("Received REGULAR membership for group %s with %d members, where I am member %d:\n", sender, num_groups, mess_type );
 	    for( i=0; i < num_groups; i++ )
 		printf("\t%s\n", &target_groups[i][0] );
