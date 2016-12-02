@@ -259,9 +259,12 @@ int sendMatrix(){
  * returns pointer to that user struct, or NULL if it does not exist
  * does not check for duplicate entries for user name */
 user * findUser(char * userName){
-    //int i;
+    //int i; 
     user * userPtr;
 
+    if (debug)
+        printf("searching for username %s\n", userName);
+    
     /* find user */
     /*
     userPtr = NULL;
@@ -290,6 +293,7 @@ email * findEmail(user * userPtr, mail_id targetID){
     //int j;
     email * emailPtr;
     emailPtr = email_vector_get(&userPtr->emails, targetID);  
+
     
     /*
     j = 0;
@@ -372,6 +376,10 @@ int addMail(update * updatePtr){
     /* find user */
     userPtr = findUser(updatePtr->user_name);
 
+    if (debug)
+	printf("Returned from findUser\n");
+
+    
     if (debug && userPtr == NULL)
 	printf("Could not find user = %s in addMail\n",
 	       updatePtr->user_name);    
@@ -379,6 +387,8 @@ int addMail(update * updatePtr){
     /* insert into user's email vector */
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
+	if (debug)
+	  printf("in add mail, returned from emailvectorinsert\n");
     }
     return checkError;
 }
@@ -638,6 +648,7 @@ void processRegularMessage(char * sender, int num_groups,
 
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
+	    applyUpdate(updateMessage); // apply to state in this server
 	    sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
@@ -652,22 +663,22 @@ void processRegularMessage(char * sender, int num_groups,
     }
 
     else if (messagePtr->header.type == MATRIX){
-	if (local_state.status != RECONCILE){
-	    if (debug)
-		printf("Received matrix message, but not reconciling\n");
-	    /* do nothing */
-	}
+      if (local_state.status != RECONCILE){
+  	  if (debug)
+  	      printf("Received matrix message, but not reconciling\n");
+	  /* do nothing */
+      }
 
-	/* status == RECONCILE */
-	else{
-	    /* update local matrix */
-	    updateMatrix(messagePtr);
+      /* status == RECONCILE */
+      else{
+	  /* update local matrix */
+	  updateMatrix(messagePtr);
 
-	    /* send updates only if lowest server in partition */
-	    if (checkLowestProcID()){
-		sendServerUpdates(messagePtr->header.proc_num);
-	    }    
-	}
+	  /* send updates only if lowest server in partition */
+	  if (checkLowestProcID()){
+	      sendServerUpdates(messagePtr->header.proc_num);
+	  }    
+      }
     }
 
     else{
