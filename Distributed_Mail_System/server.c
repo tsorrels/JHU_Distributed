@@ -182,13 +182,38 @@ int checkLowestProcID()
     return 1;
 }
 
-void sendServerUpdates(int procID){
-    
+void sendUpdatesToServer(int * localVector, int * targetVector){
 
 
 
 }
 
+
+void sendServerUpdates(){
+    int * localVector;
+    int * targetVector;
+
+    int i;
+    localVector =
+      local_state.local_update_matrix.latest_update[local_state.proc_ID];
+
+    
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+        if(i == local_state.proc_ID){
+	    continue;
+	}
+
+	targetVector = local_state.local_update_matrix.latest_update[i];
+	sendUpdatesToServer(localVector, targetVector);
+    }
+}
+
+
+void buildVectorDelta(update_matrix * deltaMatrix){
+
+
+
+}
 
 
 void updateMatrix(message * messagePtr){
