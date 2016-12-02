@@ -155,6 +155,8 @@ static void readSpreadMessage(){
     {
         processRegularMessage((message *)mess);
     }
+    else if( Is_membership_mess( service_type ) )
+        printf("Membership changed\n");
     else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 }
 
@@ -163,8 +165,14 @@ void Bye(){
     exit(0);
 }
 
-void connectClient(){
-    
+void loginUser(){
+    command newCommand;
+    email mail;
+    newCommand.type = NEWUSERCMD;
+    strcpy(mail.from, userName);
+    strcpy(newCommand.private_group, private_group);
+    memcpy(newCommand.payload, &mail, sizeof(email));
+    sendCommand(&newCommand);
     
 }
 
@@ -183,17 +191,21 @@ void mailSetup(){
     email mail;
     char sendTo[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
+    char message[MAX_MESSAGE_SIZE];
 
     printf("to: ");
     gets(sendTo);
     printf("subject: ");
     gets(subject);
+    printf("message: ");
+    gets(message);
 
     newCommand.type = NEWMAILCMD;
     strcpy(mail.from, userName);
     strcpy(newCommand.private_group, private_group);
     strcpy(mail.to, sendTo);
     strcpy(mail.subject, subject);
+    strcpy(mail.message, message);
     memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
@@ -258,6 +270,8 @@ int parseCommand(char *command){
         }
 
         strncpy(userName, command+2, l-2);
+        printf("Username = %s\n", userName);
+        loginUser();
     }
 
     else if(command[0] == 'c'){
@@ -272,8 +286,28 @@ int parseCommand(char *command){
             printf("Incorrect use\n");
             return -1;
         }
-        sprintf(server_group, "%s%d", SERVER_GROUP_NAME, serverNum);
+        switch(local_state.proc_ID){
+            case 1:
+                sprintf(server_group, "%s", SERVER_1_GROUP );
+            break;
 
+            case 2:
+                sprintf(server_group, "%s", SERVER_2_GROUP );
+            break;
+
+            case 3:
+                sprintf(server_group, "%s", SERVER_3_GROUP );
+            break;
+
+            case 4:
+                sprintf(server_group, "%s", SERVER_4_GROUP );
+            break;
+
+            case 5:
+                sprintf(server_group, "%s", SERVER_5_GROUP );
+            break;
+        }            
+            printf("server_group = %s\n", server_group);
     }
 
     else if(command[0] == 'l'){

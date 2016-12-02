@@ -345,7 +345,7 @@ int user_vector_insert(user_vector * vector, char * name){
     for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
 
     if(*pp && strcmp((*pp)->name, name) == 0)
-        return -1;
+        return 1;
 
     *pp = newUser;
     (*pp)->next = NULL;
