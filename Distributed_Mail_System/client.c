@@ -286,7 +286,7 @@ int parseCommand(char *command){
             printf("Incorrect use\n");
             return -1;
         }
-        switch(local_state.proc_ID){
+        switch(serverNum){
             case 1:
                 sprintf(server_group, "%s", SERVER_1_GROUP );
             break;
