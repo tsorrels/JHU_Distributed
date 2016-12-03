@@ -624,14 +624,19 @@ int applyUpdate(char * mess){
     return returnValue;
 }
 
+void sendToClient(char groupName[SIZE_PRIVATE_GROUP], message * messagePtr)
+{
+    //int ret;
+    SP_multicast(Mbox, AGREED_MESS,(const char *) groupName,
+		      1, sizeof(message), (const char *)(messagePtr) );    
+}
 
-message * generateResponse(char * mess){
+void generateResponse(char * mess){
     command * commandPtr;
     command * newCommandPtr;
     int i;
 
     message *messagePtr, *newMessagePtr;
-    message * replyMessage;
     email *emailPtr, *newEmailPtr, *temp;
     mail_id targetID;
     user *userPtr;
@@ -689,23 +694,14 @@ message * generateResponse(char * mess){
     free(newMessagePtr);
 }
 
-
-void sendToClient(char groupName[SIZE_PRIVATE_GROUP], message * messagePtr)
-{
-    int ret;
-    ret= SP_multicast(Mbox, AGREED_MESS,(const char *) groupName,
-		      1, sizeof(message), (const char *)(messagePtr) );    
-}
-
-
 /* should this function return anything? */
 void processRegularMessage(char * sender, int num_groups, 
 			   char groups[][MAX_GROUP_NAME], 
 			   int16 mess_type, char * mess){
-    char * privateGroup;
+    //char * privateGroup;
     message * updateMessage;
     command * commandPtr;
-    message * responseMessage;
+    //message * responseMessage;
     message * messagePtr;
     int createUpdate = 0;
 
@@ -714,7 +710,7 @@ void processRegularMessage(char * sender, int num_groups,
 
     if (messagePtr->header.type == COMMAND){
 	commandPtr = (command *) messagePtr->payload;
-	privateGroup = commandPtr->private_group;
+	//privateGroup = commandPtr->private_group;
 
 	if (commandPtr->type==NEWMAILCMD || commandPtr->type ==NEWUSERCMD ||
 	    commandPtr->type==DELETEMAILCMD || commandPtr->type ==READMAILCMD){
@@ -723,12 +719,12 @@ void processRegularMessage(char * sender, int num_groups,
 
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
-	    applyUpdate(updateMessage); // apply to state in this server
+	    applyUpdate((char *)updateMessage); // apply to state in this server
 	    sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
-	responseMessage = generateResponse(mess);// mallocs a message
-	free(responseMessage); // frees response message
+	generateResponse(mess);// mallocs a message
+	//free(responseMessage); // frees response message
     }
 
     else if (messagePtr->header.type == UPDATE){

@@ -43,12 +43,16 @@ void displayList(){
     printf("Username: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
     for(mail = emailHead; mail; mail = mail->next){
-        if(mail->read)
-            printf("%d Sender: %s, Subject: %s\n", mail->from, mail->subject);
+        if(mail->read){
+            c++;
+            printf("%d Sender: %s, Subject: %s\n", c, mail->from, mail->subject);
+        }
     }
     for(mail = emailHead; mail; mail = mail->next){
-        if(!mail->read)
-            printf("%d Sender: %s, Subject: %s\n", mail->from, mail->subject);
+        if(!mail->read){
+            c++;
+            printf("%d Sender: %s, Subject: %s\n", c, mail->from, mail->subject);
+        }
     }
     
     curr_count = 0;
@@ -386,13 +390,12 @@ int parseCommand(char *command){
 
 void userCommand(){
     char command[MAX_COMMAND_LENGTH];
-    int r = -1;
     if(!curr_count){
         //if(r == -1)
             //displayMenu();
 
         gets(command);
-        r = parseCommand(command);
+        parseCommand(command);
         printf("\nUser> ");
         fflush(stdout);
     }
