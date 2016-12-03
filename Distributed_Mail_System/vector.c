@@ -342,6 +342,7 @@ int user_vector_insert(user_vector * vector, char * name){
 
     strcpy(newUser->name, name);
     newUser->emails.emails = NULL;
+    newUser->emails.size = 0;
 
     for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
 

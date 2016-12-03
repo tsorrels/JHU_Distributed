@@ -628,10 +628,11 @@ int applyUpdate(char * mess){
 message * generateResponse(char * mess){
     command * commandPtr;
     command * newCommandPtr;
+    int i;
 
     message *messagePtr, *newMessagePtr;
     message * replyMessage;
-    email *emailPtr, *newEmailPtr;
+    email *emailPtr, *newEmailPtr, *temp;
     mail_id targetID;
     user *userPtr;
 
@@ -642,6 +643,7 @@ message * generateResponse(char * mess){
     newMessagePtr->header.type = REPLY;
     newCommandPtr = (command *) newMessagePtr->payload;
     targetID = emailPtr->mailID;
+    newCommandPtr->type = commandPtr->type;
     
     if(commandPtr->type == READMAILCMD){
         userPtr = findUser(commandPtr->user_name);
@@ -656,15 +658,34 @@ message * generateResponse(char * mess){
         }
         else
             newCommandPtr->ret = -1;
+        sendToClient(commandPtr->private_group, newMessagePtr);
     }
     else if(commandPtr->type == LISTMAILCMD){
+        userPtr = findUser(commandPtr->user_name);
+        if (userPtr != NULL){
+            newCommandPtr->ret = userPtr->emails.size;
+            sendToClient(commandPtr->private_group, newMessagePtr);
+            newCommandPtr->ret = -1;
+            temp = userPtr->emails.emails;
+            for(i = 0;i < userPtr->emails.size; i++){
+                memcpy(newCommandPtr->payload, temp, sizeof(email));
+                sendToClient(commandPtr->private_group, newMessagePtr);
+                temp = temp->next;
+            }
+        }
+        else{
+            newCommandPtr->ret = 0;
+            sendToClient(commandPtr->private_group, newMessagePtr);
+        }
         
     }
     else if(commandPtr->type == SHOWMEMBERSHIPCMD){
         
     }
-
-    sendToClient(commandPtr->private_group, newMessagePtr);
+    else{
+       newCommandPtr->ret = 0;
+       sendToClient(commandPtr->private_group, newMessagePtr);
+    }
     free(newMessagePtr);
 }
 
