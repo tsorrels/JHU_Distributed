@@ -108,8 +108,8 @@ typedef struct mail_id_type{
 /* Structure for update */
 typedef struct update_type{
     update_type type;
-    int procID;
-    int updateIndex;
+    //int procID;
+    //int updateIndex;
     char user_name[MAX_USER_LENGTH];
     mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];

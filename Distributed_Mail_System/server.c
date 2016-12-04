@@ -120,8 +120,8 @@ message * generateUpdate(char * mess){
 
     /* load message update with message type, procID, and user_name */
     updatePtr = (update *) updateMessage->payload;
-    updatePtr->procID = local_state.proc_ID;     //modify
-    updatePtr->updateIndex = local_state.updateIndex + 1;
+    updatePtr->mailID.procID = local_state.proc_ID;     //modify
+    updatePtr->mailID.index = local_state.updateIndex + 1;
     memcpy(updatePtr->user_name, commandPtr->user_name, MAX_USER_LENGTH);
 
     if (commandPtr->type == NEWUSERCMD){
@@ -530,7 +530,7 @@ int storeUpdate(update * updatePtr){
     int procID;
 
     returnValue = 0;
-    procID = updatePtr->procID;
+    procID = updatePtr->mailID.procID;
 
     returnValue = update_vector_insert(&local_state.local_update_buffer.
 				       procVectors[procID - 1], updatePtr);
@@ -550,8 +550,8 @@ int updateVector(update * updatePtr){
     int returnValue;
 
     returnValue = 0;
-    targetProcID = updatePtr->procID;
-    targetUpdateIndex = updatePtr->updateIndex;
+    targetProcID = updatePtr->mailID.procID;
+    targetUpdateIndex = updatePtr->mailID.index;
     oldUpdateIndex = local_state.local_update_matrix.latest_update
 	[local_state.proc_ID][targetProcID - 1];
 
@@ -589,10 +589,10 @@ int applyUpdate(char * mess){
     /* check if we already received/applied this update */
     //TODO: check if this is a lower LTS than what we already have
     // modify
-    if (findUpdate(updatePtr->procID, updatePtr->updateIndex) != NULL){
+    if (findUpdate(updatePtr->mailID.procID, updatePtr->mailID.index) != NULL){
 	if (debug)
 	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
-		   updatePtr->procID, updatePtr->updateIndex);
+		   updatePtr->mailID.procID, updatePtr->mailID.index);
 	return 1;
     }
     
@@ -615,7 +615,7 @@ int applyUpdate(char * mess){
     /* increment update counter */
     //TODO: verify
     local_state.updateIndex = max(local_state.updateIndex + 1,
-				  updatePtr->updateIndex);
+				  updatePtr->mailID.index);
     //local_state.updateIndex ++;
 
     storeUpdate(updatePtr);
