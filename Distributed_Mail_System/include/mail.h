@@ -32,6 +32,10 @@
 #define MAX_VSSETS      10
 #define MAX_MEMBERS     100
 
+#define USERLIST        "userlist"
+#define UPDATEMATRIX    "updatematrix"
+#define UPDATEBUFFER    "updatebuffer"
+
 
 
 
@@ -209,6 +213,9 @@ typedef struct state_type{
     update_matrix local_update_matrix;
     update_buffer local_update_buffer;
     int recoveryFD;
+    /*int userListFD;
+    int updateMatrixFD;
+    int updateBufferFD;*/
     connection connections[MAX_CONNECTIONS];
     char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
 } state;

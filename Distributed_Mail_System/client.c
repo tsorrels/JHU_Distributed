@@ -42,12 +42,14 @@ void displayList(){
     int c = 0;
     printf("Username: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
+    printf("Read Messages:\n");
     for(mail = emailHead; mail; mail = mail->next){
         if(mail->read){
             c++;
             printf("%d Sender: %s, Subject: %s\n", c, mail->from, mail->subject);
         }
     }
+    printf("Unread Messages:\n");
     for(mail = emailHead; mail; mail = mail->next){
         if(!mail->read){
             c++;
