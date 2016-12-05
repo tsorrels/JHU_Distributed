@@ -270,7 +270,7 @@ void sendUpdates(){
 /* checks each element in target vector to see whether an update is missing
  * this is both in the local vector and does not exist in another proc's
  * vector that is in a) in the membership and b) lower in proc number */
-void sendUpdatesToServer(int * localVector, int * targetVector){
+void checkSendUpdates(int * localVector, int * targetVector){
     int i; /* server index */
     int lowestUpdate;
 
@@ -285,7 +285,7 @@ void sendUpdatesToServer(int * localVector, int * targetVector){
 }
 
 
-void sendServerUpdates(){
+void continueReconcile(){
     int * localVector;
     int * targetVector;
 
@@ -303,7 +303,7 @@ void sendServerUpdates(){
 	}
 
 	targetVector = local_state.local_update_matrix.latest_update[i];
-	sendUpdatesToServer(localVector, targetVector);
+	checkSendUpdates(localVector, targetVector);
     }
 }
 
@@ -849,7 +849,8 @@ void processRegularMessage(char * sender, int num_groups,
 
 	    local_state.local_update_matrix.num_matrix_recvd ++;
 	    if (local_state.local_update_matrix.num_matrix_recvd == num_groups){
-		sendServerUpdates(messagePtr->header.proc_num);	      
+		continueReconcile();
+		//sendServerUpdates(messagePtr->header.proc_num);	      
 	    }
 	}
     }
@@ -871,12 +872,15 @@ int checkReconcile(){
 void processMembershipMessage(char * mess){
     int reconcile;
    
+
     reconcile = checkReconcile();
+
+    /* reset received matrix counter */
+    local_state.local_update_matrix.num_matrix_recvd = 0;
 
     if (reconcile){
 	/* set status to reconcile and broadcast update vectors */
 	local_state.status = RECONCILE;
-	//reconcile();
 	sendMatrix();
     }
 }
