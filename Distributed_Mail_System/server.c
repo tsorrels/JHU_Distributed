@@ -1,5 +1,6 @@
 #include "sp.h"
 #include "mail.h"
+#include <limits.h>
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -193,20 +194,92 @@ int checkLowestProcID(int procIndex, int targetUpdate)
 }
 
 
+/* checks the strings of membership stored in state for a particulare serverID
+ * returns 1 if serverID is in current membership in state */
+int checkMembership(int serverID){
+    int i;
+
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (local_state.current_membership[i][7] == serverID + 48 &&
+	    local_state.current_membership[i][7] != '\0'){
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+/* check if this process has the highest update originating from a server in
+ * the current membership */
+int checkHighestUpdate(int serverIndex, int update){
+    int i;
+    int highestUpdate;
+    int highestProcIndex;
+    
+    highestUpdate = update;
+
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (!checkMembership(i + 1)){
+	    continue;
+	}
+        if(i == local_state.proc_ID - 1){
+	    continue;
+	}
+
+	/* check if another process has a higher update this process, or
+	   check if it is the same update, but higher proc ID*/
+	if ( (local_state.local_update_matrix.latest_update[i][serverIndex] >
+	      update) ||
+	     (local_state.local_update_matrix.latest_update[i][serverIndex] ==
+	      update && i > local_state.proc_ID) ){
+	    return 0;
+	}
+    }    
+
+    return 1;
+}
+
+
+/* searches local update matrix for lowest update received by another process
+ * in the current membership for a given serverID */
+int getLowestUpdate(int serverIndex){
+    int lowestUpdate = INT_MAX;
+    int i;
+
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+        if(i == local_state.proc_ID - 1){
+	    continue;
+	}
+	if (!checkMembership(i + 1)){
+	    continue;
+	}
+
+	if (local_state.local_update_matrix.latest_update[i][serverIndex] <
+	    lowestUpdate){
+	    lowestUpdate = 
+		local_state.local_update_matrix.latest_update[i][serverIndex];
+	}
+    }    
+
+    return lowestUpdate;
+}
+
+void sendUpdates(){
+
+}
+
 /* checks each element in target vector to see whether an update is missing
  * this is both in the local vector and does not exist in another proc's
  * vector that is in a) in the membership and b) lower in proc number */
 void sendUpdatesToServer(int * localVector, int * targetVector){
-    int i;
+    int i; /* server index */
+    int lowestUpdate;
 
-    
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (targetVector[i] < localVector[i] &&
-	    checkLowestProcID(i, localVector[i]) ){
-	    
-
-
-
+	    checkHighestUpdate(i, localVector[i]) ){
+	    /* this processes must send updates */
+	    lowestUpdate = getLowestUpdate(i);
+	    sendUpdates();
 	}
     }
 }
@@ -222,7 +295,10 @@ void sendServerUpdates(){
 
     
     for (i = 0 ; i < NUM_SERVERS ; i ++){
-        if(i == local_state.proc_ID){
+        if(i == local_state.proc_ID - 1){
+	    continue;
+	}
+	if (!checkMembership(i + 1)){
 	    continue;
 	}
 
@@ -266,6 +342,7 @@ void updateMatrix(message * messagePtr){
     }
 }
 
+ 
 
 /* create new message containing local update matrix and sends to group
  * returns 0 on success, -1 on malloc failuer or send failure */
@@ -751,27 +828,30 @@ void processRegularMessage(char * sender, int num_groups,
     }
 
     else if (messagePtr->header.type == UPDATE){
+	//TODO: check reconcile
+	/* check reconcile condition */
+
 	applyUpdate(mess);
 
     }
 
     else if (messagePtr->header.type == MATRIX){
-      if (local_state.status != RECONCILE){
-  	  if (debug)
-  	      printf("Received matrix message, but not reconciling\n");
-	  /* do nothing */
-      }
+        if (local_state.status != RECONCILE){
+	    if (debug)
+		printf("Received matrix message, but not reconciling\n");
+	    /* do nothing */
+	}
 
-      /* status == RECONCILE */
-      else{
-	  /* update local matrix */
-	  updateMatrix(messagePtr);
+	/* status == RECONCILE */
+	else{
+	    /* update local matrix */
+	    updateMatrix(messagePtr);
 
-	  /* send updates only if lowest server in partition */
-	  //if (checkLowestProcID()){
-	      sendServerUpdates(messagePtr->header.proc_num);
-	      //}    
-      }
+	    local_state.local_update_matrix.num_matrix_recvd ++;
+	    if (local_state.local_update_matrix.num_matrix_recvd == num_groups){
+		sendServerUpdates(messagePtr->header.proc_num);	      
+	    }
+	}
     }
 
     else{
@@ -779,6 +859,8 @@ void processRegularMessage(char * sender, int num_groups,
     }
 
 }
+
+
 
 int checkReconcile(){
     return 1;
@@ -794,6 +876,7 @@ void processMembershipMessage(char * mess){
     if (reconcile){
 	/* set status to reconcile and broadcast update vectors */
 	local_state.status = RECONCILE;
+	//reconcile();
 	sendMatrix();
     }
 }
@@ -948,13 +1031,19 @@ void initialize(int argc, char ** argv){
     local_state.status = NORMAL;
     local_state.users.user_head = NULL;
 
+    /* initialize update vectors to invalid */
     for (i = 0 ; i < NUM_SERVERS ; i ++){
         local_state.local_update_buffer.procVectors[i].updates = NULL;
 	for(j = 0 ; j < NUM_SERVERS ; j ++){
 	    local_state.local_update_matrix.latest_update[i][j] = -1;
 	}
     }
+    local_state.local_update_matrix.num_matrix_recvd = 0;
     
+    /* initialize not waiting on any updates */
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	local_state.awaiting_updates[i] = -1;
+    }
 
 
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);

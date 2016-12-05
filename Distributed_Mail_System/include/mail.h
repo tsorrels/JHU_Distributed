@@ -135,6 +135,8 @@ typedef struct update_buffer_type{
 typedef struct update_matrix_type{
     /* first dimmension is server the vector is from, second is vector */
     int latest_update[NUM_SERVERS][NUM_SERVERS];
+    /* reset to 0 during every change to membership */
+    int num_matrix_recvd; 
 } update_matrix;
 
 
@@ -214,6 +216,7 @@ typedef struct state_type{
     int updateBufferFD;*/
     connection connections[MAX_CONNECTIONS];
     char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
+    int awaiting_updates [NUM_SERVERS];
 } state;
 
 
