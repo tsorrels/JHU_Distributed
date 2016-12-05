@@ -965,6 +965,7 @@ void initialize(int argc, char ** argv){
     local_state.users.user_head = NULL;
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
+        local_state.local_update_buffer.procVectors[i].updates = NULL;
 	for(j = 0 ; j < NUM_SERVERS ; j ++){
 	    local_state.local_update_matrix.latest_update[i][j] = -1;
 	}

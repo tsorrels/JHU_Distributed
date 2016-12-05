@@ -34,10 +34,6 @@
 
 #define USERLIST        "userlist"
 #define UPDATEMATRIX    "updatematrix"
-#define UPDATEBUFFER    "updatebuffer"
-
-
-
 
 /* System wide message types */
 typedef enum {
@@ -151,8 +147,8 @@ typedef struct email_type{
     char from[MAX_USER_LENGTH];
     char to[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
-    int date;
-    int valid;
+    //int date;
+    //int valid;
     char message[MAX_MESSAGE_SIZE];
     struct email_type * next;
 } email;
