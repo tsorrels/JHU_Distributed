@@ -175,17 +175,40 @@ void sendUpdate(message * updateMessage){
 
 
 
-int checkLowestProcID()
+/* checks update matrix for a processes in the current membership that has
+ * an update index for a process procIndex + 1 that is higher that the local 
+ * update index for that process AND is a lower procID */
+int checkLowestProcID(int procIndex, int targetUpdate)
 {
+    int i;
 
+    //TODO: Tyler fix
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (local_state.local_update_matrix.latest_update[i][procIndex] ==0){
+	    break;
+	}
+    }
 
     return 1;
 }
 
+
+/* checks each element in target vector to see whether an update is missing
+ * this is both in the local vector and does not exist in another proc's
+ * vector that is in a) in the membership and b) lower in proc number */
 void sendUpdatesToServer(int * localVector, int * targetVector){
+    int i;
+
+    
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (targetVector[i] < localVector[i] &&
+	    checkLowestProcID(i, localVector[i]) ){
+	    
 
 
 
+	}
+    }
 }
 
 
@@ -745,9 +768,9 @@ void processRegularMessage(char * sender, int num_groups,
 	  updateMatrix(messagePtr);
 
 	  /* send updates only if lowest server in partition */
-	  if (checkLowestProcID()){
+	  //if (checkLowestProcID()){
 	      sendServerUpdates(messagePtr->header.proc_num);
-	  }    
+	      //}    
       }
     }
 
