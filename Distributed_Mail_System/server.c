@@ -817,7 +817,7 @@ static	void	readSpreadMessage()
     int		 service_type;
     int16		 mess_type;
     int		 endian_mismatch;
-    int		 i,j;
+    int		 i,j,memCtr;
     int		 ret;
 
     if (debug)
@@ -873,9 +873,20 @@ static	void	readSpreadMessage()
 
 	  
 	    printf("Received REGULAR membership for group %s with %d members, where I am member %d:\n", sender, num_groups, mess_type );
-	    for( i=0; i < num_groups; i++ )
+	    for( i=0; i < num_groups; i++ ){
 		printf("\t%s\n", &target_groups[i][0] );
+		/* Copy current members into state */
+		memcpy(local_state.current_membership[i], &target_groups[i][0],
+		       MAX_GROUP_NAME);
+	    }
+	    
+	    /* Mark empty slots in membership as null */	    
+	    for (memCtr = NUM_SERVERS - i ; memCtr < NUM_SERVERS ; memCtr ++){
+		local_state.current_membership[i][0] = '\0';
+	    }
+
 	    printf("grp id is %d %d %d\n",memb_info.gid.id[0], memb_info.gid.id[1], memb_info.gid.id[2] );
+
 
 	    if( Is_caused_join_mess( service_type ) )
 	    {
