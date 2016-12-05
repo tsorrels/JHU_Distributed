@@ -881,8 +881,8 @@ static	void	readSpreadMessage()
 	    }
 	    
 	    /* Mark empty slots in membership as null */	    
-	    for (memCtr = NUM_SERVERS - i ; memCtr < NUM_SERVERS ; memCtr ++){
-		local_state.current_membership[i][0] = '\0';
+	    for (memCtr = i; memCtr < NUM_SERVERS ; memCtr ++){
+		local_state.current_membership[memCtr][0] = '\0';
 	    }
 
 	    printf("grp id is %d %d %d\n",memb_info.gid.id[0], memb_info.gid.id[1], memb_info.gid.id[2] );
