@@ -853,10 +853,6 @@ static	void	readSpreadMessage()
     {
 	processRegularMessage(sender, num_groups, target_groups, 
 			      mess_type, mess);
-	//mess[ret] = 0;
-        // Process the received message and send new messages accordingly.
-        //deliverMessage(mess);
-        //sendMessages();
     }else if( Is_membership_mess( service_type ) )
     {
 	ret = SP_get_memb_info( mess, service_type, &memb_info );
@@ -867,10 +863,6 @@ static	void	readSpreadMessage()
 	}
 	if     ( Is_reg_memb_mess( service_type ) )
 	{
-	    // num_groups loaded with number of members in group
-	    //message * dummyMessage = malloc(sizeof(message));
-	    //sendUpdate(dummyMessage);
-
 	  
 	    printf("Received REGULAR membership for group %s with %d members, where I am member %d:\n", sender, num_groups, mess_type );
 	    for( i=0; i < num_groups; i++ ){
@@ -923,14 +915,6 @@ static	void	readSpreadMessage()
 	}else if( Is_caused_leave_mess( service_type ) ){
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
-
-	/********************* CHECK MEMBERSHIP *************************/
-	//if (num_groups == num_procs){
-	    /* BEGIN EXECUTION */
-	//  printf("Starting Transfer\n");
-        //    gettimeofday(&start, NULL);
-        //    sendMessages();
-	//}
 
 
     } else if ( Is_reject_mess( service_type ) )
