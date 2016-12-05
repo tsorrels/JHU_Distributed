@@ -193,12 +193,12 @@ void loadState(state * local_state){
     stateExists = 1;
 
 
-    if (stat("./recovery", &st) == -1) {
+    /*if (stat("./recovery", &st) == -1) {
         //mkdir("./recovery", 0700);
         return;
     }    
 
-    chdir("./recovery");
+    chdir("./recovery");*/
 
     // set fd in state
 
