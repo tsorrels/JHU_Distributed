@@ -53,18 +53,69 @@ static void recoverUpdateMatrix(update_matrix *matrix){
 
 static void recoverUpdateBuffer(update_buffer *buffer){
     FILE *fd;
+    char name[30]; /*from[MAX_USER_LENGTH], to[MAX_USER_LENGTH];
+    char subject[MAX_SUBJECT_LENGTH];
+    char user_name[MAX_USER_LENGTH];
+    update_type type;
+    int procID, procID1, index, index1, read;*/
+    int ret;
+    update *updatePtr, *temp, *newUpdate;
+    int i;
 
-    if((fd = fopen(UPDATEBUFFER, "r")) == NULL){
-        printf("Error opening update buffer file\n");
-        return;
+    for(i = 1; i < NUM_SERVERS; i++){
+        sprintf(name, "updatebuffer%d", i);
+
+        if((fd = fopen(name, "r")) == NULL){
+            printf("Error opening update buffer file\n");
+            return;
+        }
+
+        if((newUpdate = malloc(sizeof(update))) == NULL){
+                printf("Error loading the update buffer\n");
+                return;
+        }
+
+        updatePtr = buffer->procVectors[i-1].updates;
+        //while(fscanf(fd, "%d %s %d %d %d %d %d %s %s %s", type, user_name, &procID, 
+        //            &index, &read, &procID1, &index1, from, to, subject))
+        while((ret = fread(newUpdate, sizeof(update), 1, fd)) == sizeof(update))
+        {
+            /*newUpdate->type = type;
+            strcpy(newUpdate->user_name, user_name);
+            newUpdate->mailID.procID = procID;
+            newUpdate->mailID.index = index;
+            newEmail = (email *)newUpdate->payload;
+            newEmail->read = read;
+            strcpy(newEmail->from, from);
+            strcpy(newEmail->to, to);
+            strcpy(newEmail->subject, subject);
+            fscanf(fd,"%[^\n]", newEmail->message);*/
+            newUpdate->next = NULL;
+            if(updatePtr){
+                temp->next = newUpdate;
+                temp = temp->next;
+            }
+            else{
+                updatePtr = newUpdate;
+                temp = newUpdate;
+            }
+            if((newUpdate = malloc(sizeof(update))) == NULL){
+                printf("Error loading the update buffer\n");
+                return;
+            }
+        }
+        free(newUpdate);
+        fclose(fd);
     }
 }
 
 static void recoverUser(user *userPtr){
     FILE *userFD;
-    int read, procID, index, count;
-    char from[MAX_USER_LENGTH], to[MAX_USER_LENGTH];
-    char subject[MAX_SUBJECT_LENGTH], message[MAX_MESSAGE_SIZE];
+    //int read, procID, index; 
+    int count, ret;
+    //char from[MAX_USER_LENGTH], to[MAX_USER_LENGTH];
+    //char subject[MAX_SUBJECT_LENGTH];
+    //message[MAX_MESSAGE_SIZE];
     email *newEmail, *temp;
 
     if((userFD = fopen(userPtr->name, "r")) == NULL){
@@ -73,20 +124,22 @@ static void recoverUser(user *userPtr){
     }
 
     count = 0;
-    while(fscanf(userFD, "%d %d %d %s %s %s %s", &read, &procID, &index,
-                from, to, subject, message))
-    {
-        if((newEmail = malloc(sizeof(email))) != NULL){
+    //while(fscanf(userFD, "%d %d %d %s %s %s", &read, &procID, &index,
+    //            from, to, subject))
+    if((newEmail = malloc(sizeof(email))) != NULL){
             printf("Error loading the email\n");
             return;
-        }
-        newEmail->read = read;
+    }
+    while((ret = fread(newEmail, sizeof(email), 1, userFD)) == sizeof(email))
+    {
+        /*newEmail->read = read;
         newEmail->mailID.procID = procID;
         newEmail->mailID.index = index;
         strcpy(newEmail->from, from);
         strcpy(newEmail->to, to);
         strcpy(newEmail->subject, subject);
-        strcpy(newEmail->message, message);
+        fscanf(fd,"%[^\n]", newEmail->message);*/
+        //strcpy(newEmail->message, message);
         newEmail->next = NULL;
 
         if(userPtr->emails.emails){
@@ -98,7 +151,12 @@ static void recoverUser(user *userPtr){
             temp = newEmail;
         }
         count++;
+        if((newEmail = malloc(sizeof(email))) != NULL){
+            printf("Error loading the email\n");
+            return;
+        }
     }
+    free(newEmail);
     userPtr->emails.size = count;
     fclose(userFD);
 }
