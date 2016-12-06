@@ -216,7 +216,7 @@ typedef struct state_type{
     int updateBufferFD;*/
     connection connections[MAX_CONNECTIONS];
     char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
-    int awaiting_updates [NUM_SERVERS];
+    int awaiting_updates [NUM_SERVERS]; // Probably dont need this anymore
 } state;
 
 
