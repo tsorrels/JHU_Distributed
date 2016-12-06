@@ -104,6 +104,34 @@ int main (int argc, char ** argv)
     return 0;
 }
 
+
+/* searches update vector for given procID for update with given updateIndex
+ * returns pointer to update, or NULL if it is not in the buffer */
+update * findUpdate(int procID, int updateIndex){
+    //int targetProcID = updateIndex->procID;
+    update_vector * targetVector;
+    targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
+    //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
+    /* return pointer to update, or NULL */
+    return update_vector_get(targetVector , updateIndex);	
+}
+
+int storeUpdate(update * updatePtr){
+    int returnValue;
+    int procID;
+
+    returnValue = 0;
+    procID = updatePtr->mailID.procID;
+
+    returnValue = update_vector_insert(&local_state.local_update_buffer.
+				       procVectors[procID - 1], updatePtr);
+
+    return returnValue;
+}
+
+
+
+
 /* generates an update message to send to other servers 
  * returns a pointer to a full message */
 message * generateUpdate(char * mess){
@@ -212,10 +240,10 @@ int checkMembership(int serverID){
  * the current membership */
 int checkHighestUpdate(int serverIndex, int update){
     int i;
-    int highestUpdate;
-    int highestProcIndex;
+    //int highestUpdate;
+    //int highestProcIndex;
     
-    highestUpdate = update;
+    //highestUpdate = update;
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (!checkMembership(i + 1)){
@@ -263,8 +291,17 @@ int getLowestUpdate(int serverIndex){
     return lowestUpdate;
 }
 
-void sendUpdates(){
+/* send updates from a target process from index min to index max */
+void sendUpdates(int procID, int min, int max){
+    int i;
+    update * updatePtr;
 
+    for (i = min ; i <= max ; i ++){
+	updatePtr = findUpdate(procID, i);
+	if (updatePtr != NULL){
+	    sendUpdate(updatePtr);	    
+	}	
+    }
 }
 
 /* checks each element in target vector to see whether an update is missing
@@ -279,7 +316,7 @@ void checkSendUpdates(int * localVector, int * targetVector){
 	    checkHighestUpdate(i, localVector[i]) ){
 	    /* this processes must send updates */
 	    lowestUpdate = getLowestUpdate(i);
-	    sendUpdates();
+	    sendUpdates(i + 1, lowestUpdate, localVector[i]);
 	}
     }
 }
@@ -614,29 +651,6 @@ int addUser(char * user_name){
     return 0;
 }
 
-/* searches update vector for given procID for update with given updateIndex
- * returns pointer to update, or NULL if it is not in the buffer */
-update * findUpdate(int procID, int updateIndex){
-    //int targetProcID = updateIndex->procID;
-    update_vector * targetVector;
-    targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
-    //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
-    /* return pointer to update, or NULL */
-    return update_vector_get(targetVector , updateIndex);	
-}
-
-int storeUpdate(update * updatePtr){
-    int returnValue;
-    int procID;
-
-    returnValue = 0;
-    procID = updatePtr->mailID.procID;
-
-    returnValue = update_vector_insert(&local_state.local_update_buffer.
-				       procVectors[procID - 1], updatePtr);
-
-    return returnValue;
-}
 
 
 
