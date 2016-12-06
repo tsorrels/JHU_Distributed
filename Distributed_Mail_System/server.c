@@ -292,7 +292,7 @@ int getLowestUpdate(int serverIndex){
 }
 
 /* send updates from a target process from index min to index max */
-void sendUpdates(int procID, int min, int max){
+void sendMissingUpdates(int procID, int min, int max){
     int i;
     update * updatePtr;
 
@@ -316,7 +316,7 @@ void checkSendUpdates(int * localVector, int * targetVector){
 	    checkHighestUpdate(i, localVector[i]) ){
 	    /* this processes must send updates */
 	    lowestUpdate = getLowestUpdate(i);
-	    sendUpdates(i + 1, lowestUpdate, localVector[i]);
+	    sendMissingUpdates(i + 1, lowestUpdate, localVector[i]);
 	}
     }
 }
