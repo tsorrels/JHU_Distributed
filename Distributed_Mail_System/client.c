@@ -438,4 +438,6 @@ int main (int argc, char ** argv)
 
     E_handle_events();
 
+    return 0;
+
 }
