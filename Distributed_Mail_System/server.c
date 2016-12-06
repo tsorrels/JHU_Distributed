@@ -159,19 +159,19 @@ message * generateUpdate(char * mess){
 
     else if (commandPtr->type == DELETEMAILCMD){
 	updatePtr->type = DELETEMAILMSG;
-	updatePtr->mailID = emailPtr->mailID;
+	//updatePtr->mailID = emailPtr->mailID;
     }
 
     else if (commandPtr->type == READMAILCMD){
 	updatePtr->type = READMAILMSG;
-	updatePtr->mailID = emailPtr->mailID;
+	//updatePtr->mailID = emailPtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
 	// I dont think this memcpy is necessary
     }
 
     else if (commandPtr->type == NEWMAILCMD){
 	updatePtr->type = NEWMAILMSG;
-	updatePtr->mailID = emailPtr->mailID;
+    emailPtr->mailID = updatePtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
     }
 
@@ -445,6 +445,9 @@ user * findUser(char * userName){
     */
     userPtr = user_vector_get(&local_state.users, userName);
     
+    if(debug)
+        printf("Returned from user_vector_get\n");
+    
     return userPtr;
 }
 
@@ -550,7 +553,7 @@ int addMail(update * updatePtr){
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
 	if (debug)
-	  printf("in add mail, returned from emailvectorinsert\n");
+	  printf("in add mail, returned from emailvectorinsert email_head = %p\n", userPtr->emails.emails);
     }
     return checkError;
 }
@@ -670,7 +673,7 @@ int updateVector(update * updatePtr){
 	[local_state.proc_ID][targetProcID - 1];
 
     /* check if this is an old update */
-    if (targetUpdateIndex == oldUpdateIndex + 1){
+    if (targetUpdateIndex > oldUpdateIndex){
 	local_state.local_update_matrix.latest_update[local_state.proc_ID]
 	    [targetProcID - 1] = targetUpdateIndex;
 
@@ -781,16 +784,30 @@ void generateResponse(char * mess){
     }
     else if(commandPtr->type == LISTMAILCMD){
         userPtr = findUser(commandPtr->user_name);
+        if(debug){
+            printf("Inside generateResponse userptr = %p\n", userPtr);
+            printf("Inside generateresponse name = %s\n", userPtr->name);
+        }
         if (userPtr != NULL){
             newCommandPtr->ret = userPtr->emails.size;
+            if(debug){
+                printf("Inside generateresponse size = %d\n", userPtr->emails.size);
+            }
             sendToClient(commandPtr->private_group, newMessagePtr);
             newCommandPtr->ret = -1;
             temp = userPtr->emails.emails;
+            printf("Entering for loop\n");
             for(i = 0;i < userPtr->emails.size; i++){
+                printf("temp = %p\n", temp);
+                printf("i = %d size of email = %d size of command = %d from = %s, to = %s subject = %s\n", i,
+                        sizeof(email), sizeof(command), temp->from, temp->to, temp->subject);
                 memcpy(newCommandPtr->payload, temp, sizeof(email));
+                printf("Memcpy successful\n");
                 sendToClient(commandPtr->private_group, newMessagePtr);
+                printf("Send to client successful\n");
                 temp = temp->next;
             }
+            printf("for loop successfull\n");
         }
         else{
             newCommandPtr->ret = 0;
@@ -837,6 +854,8 @@ void processRegularMessage(char * sender, int num_groups,
 	    sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
+    if(debug)
+        printf("Generating response\n");
 	generateResponse(mess);// mallocs a message
 	//free(responseMessage); // frees response message
     }

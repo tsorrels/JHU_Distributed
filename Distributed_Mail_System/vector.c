@@ -57,11 +57,13 @@ int user_vector_delete(user_vector * vector, char * name){
 
 int email_vector_insert(email_vector * vector, email * emailPtr){
     mail_id targetID;
-    email *email_head, *newEmail, **pp, *temp;
+    email *newEmail, **pp, *temp;
 
     targetID = emailPtr->mailID;
-    email_head = vector->emails;
+    //email_head = vector->emails;
     newEmail = malloc(sizeof(email));
+    
+    //printf("Inserting emial Email_head = %p\n", email_head);
 
     if(newEmail == NULL){
         perror("Failed to allocate new memory in email_vector");
@@ -70,7 +72,7 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     memcpy(newEmail, emailPtr, sizeof(email));
     
     /* find correct update index */
-    for(pp=&email_head; *pp && (*pp)->mailID.index <
+    for(pp=&vector->emails; *pp && (*pp)->mailID.index <
 		targetID.index; pp=&(*pp)->next);
 
     if(*pp && (*pp)->mailID.index == targetID.index){
@@ -83,10 +85,14 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     else{
         temp = (*pp);
         *pp = newEmail;
+        printf("temp = %p\n", temp);
+        printf("Inserting email newEmail = %p, email_head = %p, from = %s, to = %s, subject = %s, message = %s\n",
+                newEmail, vector->emails, newEmail->from, newEmail->to, newEmail->subject, newEmail->message);
     }
     (*pp)->next = temp;
 
     vector->size ++;
+    printf("Email_head = %p\n", vector->emails);
     return 0;
 
 }
@@ -115,9 +121,15 @@ update * update_vector_get(update_vector * vector, int updateIndex){
 
 user * user_vector_get(user_vector * vector, char * name){
     user **pp;
+    int i=0;
 
-    for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next);
-
+    pp=&vector->user_head;
+    printf("Inside user_vector_get i = %d user_head = %p name = %s strcmp = %d\n", i, *pp, (*pp)->name, 
+            strcmp((*pp)->name, name));
+    for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next){
+        printf("Inside user_vector_get i = %d\n", i);
+        i++;
+    }
     return (*pp);
 
 }

@@ -71,6 +71,7 @@ void processRegularMessage(message *mess){
         if(com->ret != -1){
             maxMailNum = com->ret;
             curr_count = 0;
+            printf("Total mails to follow = %d\n", maxMailNum);
         }
         else{            
             for(pp=&emailHead; *pp; pp=&(*pp)->next);
@@ -90,6 +91,8 @@ void processRegularMessage(message *mess){
     else if(commandType == NEWUSERCMD){
         if(com->ret == -1)
             printf("Could not login with the username\n");
+        else
+            printf("Login Successful\n");
     }
     else if(commandType == NEWMAILCMD){
         if(com->ret == -1)
@@ -278,7 +281,8 @@ int parseCommand(char *command){
             return -1;
         }
 
-        strncpy(userName, command+2, l-2);
+        //strncpy(userName, command+2, l-2);
+        strcpy(userName, command+2);
         printf("Username = %s\n", userName);
         loginUser();
     }
