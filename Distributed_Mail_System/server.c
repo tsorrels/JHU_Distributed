@@ -892,6 +892,9 @@ void processMembershipMessage(char * sender, int num_groups,
 			   int16 mess_type, char * mess){
     int reconcile;
 
+    if (debug)
+        printf("Runing processMembershipMessage\n");
+    
     reconcile = checkReconcile(num_groups);
     local_state.status = NORMAL;
     
@@ -900,7 +903,10 @@ void processMembershipMessage(char * sender, int num_groups,
 
     if (reconcile){
 	/* set status to reconcile and broadcast update vectors */
-	local_state.status = RECONCILE;
+        if (debug)
+            printf("Reconciling\n");
+      
+        local_state.status = RECONCILE;
 	sendMatrix();
     }
 }
@@ -986,7 +992,11 @@ static	void	readSpreadMessage()
 
 	    printf("grp id is %d %d %d\n",memb_info.gid.id[0], memb_info.gid.id[1], memb_info.gid.id[2] );
 
+	    processMembershipMessage(sender, num_groups, target_groups, 
+				     mess_type, mess);
 
+
+	    
 	    if( Is_caused_join_mess( service_type ) )
 	    {
 		printf("Due to the JOIN of %s\n", memb_info.changed_member );
@@ -1023,8 +1033,6 @@ static	void	readSpreadMessage()
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
 
-	processMembershipMessage(sender, num_groups, target_groups, 
-				 mess_type, mess);
 
 
     } else if ( Is_reject_mess( service_type ) )
