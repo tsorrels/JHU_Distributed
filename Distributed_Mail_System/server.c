@@ -208,15 +208,16 @@ void printMatrix(){
     int i;
     int j;
 
-    int ** matrix;
-    matrix = (int **) local_state.local_update_matrix.latest_update;
+    //int ** matrix;
+    //matrix =  &local_state.local_update_matrix.latest_update;
     
     printf("Printing local matrix____________\n");
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
       printf(" From proc%d\t", i);
 	for (j = 0 ; j < NUM_SERVERS ; j ++){
-  	    printf(" %d", matrix[i][j]);
+	  //	    printf(" %d", matrix[i][j]);
+	   printf(" %d",local_state.local_update_matrix.latest_update[i][j]);
 	}
 	printf("\n");     
 
@@ -403,6 +404,17 @@ void updateMatrix(message * messagePtr){
     update_matrix * sentMatrix;
     update_matrix * localMatrix;    
 
+    if (messagePtr->header.proc_num == local_state.proc_ID){
+        if(debug)
+	    printf("Received own matrix; skipping updateMatrix");
+	return;
+    }
+    
+    if (debug){
+        printf("Updating matrix\n");
+        printf ("Matrix before update:\n");
+	printMatrix();
+    }
     sentMatrix = (update_matrix * ) messagePtr->payload;
     localMatrix = &local_state.local_update_matrix;//.latest_update;
 
@@ -422,6 +434,12 @@ void updateMatrix(message * messagePtr){
 	    }
 	}
     }
+
+    if (debug){
+        printf ("Matrix after update:\n");
+        printMatrix();
+    }
+    
 }
 
  
@@ -432,6 +450,11 @@ int sendMatrix(){
     int ret;
     message * mess;
 
+    if (debug){
+        printf("sending matrix:\n");
+	printMatrix();
+    }
+    
     /* craft message */
     mess = malloc(sizeof(message));
     if (mess == NULL){
@@ -926,7 +949,7 @@ void processRegularMessage(char * sender, int num_groups,
 	else{
 	    /* update local matrix */
 	    updateMatrix(messagePtr);
-
+	    
 	    local_state.local_update_matrix.num_matrix_recvd ++;
 	    if (local_state.local_update_matrix.num_matrix_recvd ==
 		countMembers()){
