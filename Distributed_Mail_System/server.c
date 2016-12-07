@@ -214,7 +214,7 @@ void printMatrix(){
     printf("Printing local matrix____________\n");
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
-      printf(" From proc%d\t", i);
+      printf(" From proc%d\t", i+1);
 	for (j = 0 ; j < NUM_SERVERS ; j ++){
 	  //	    printf(" %d", matrix[i][j]);
 	   printf(" %d",local_state.local_update_matrix.latest_update[i][j]);
