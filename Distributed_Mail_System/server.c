@@ -407,7 +407,7 @@ void updateMatrix(message * messagePtr){
 
     if (messagePtr->header.proc_num == local_state.proc_ID){
         if(debug)
-	    printf("Received own matrix; skipping updateMatrix");
+	    printf("Received own matrix; skipping updateMatrix\n");
 	return;
     }
     
@@ -730,7 +730,7 @@ int addUser(char * user_name){
 
 
 /* Updates this proc's vector in local update matrix
- * checks whether this is a consecutive update, then conditionally updates
+ * checks whether this is a more recent update before updating vector
  * return 0 on vector update, 1 if did not update vector */
 int updateVector(update * updatePtr){
     int targetProcID;
@@ -742,11 +742,11 @@ int updateVector(update * updatePtr){
     targetProcID = updatePtr->mailID.procID;
     targetUpdateIndex = updatePtr->mailID.index;
     oldUpdateIndex = local_state.local_update_matrix.latest_update
-	[local_state.proc_ID][targetProcID - 1];
+	[local_state.proc_ID - 1][targetProcID - 1];
 
     /* check if this is an old update */
     if (targetUpdateIndex > oldUpdateIndex){
-	local_state.local_update_matrix.latest_update[local_state.proc_ID]
+	local_state.local_update_matrix.latest_update[local_state.proc_ID - 1]
 	    [targetProcID - 1] = targetUpdateIndex;
 
 	if (debug)
