@@ -19,7 +19,8 @@ static  char    Spread_name[80];
 static	char	User[80];
 static  int     To_exit = 0;
 static  int     curr_count = 0;
-email *emailHead;
+static  int     wait = 0;
+email *emailHead, *readHead, *unreadHead;
 
 int sendCommand(command *newCommand){
     int ret;
@@ -38,22 +39,25 @@ int sendCommand(command *newCommand){
 }
 
 void displayList(){
-    email *mail;
+    //email *mail, *read, *unread;
+    email **pp;
     int c = 0;
     printf("Username: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
     printf("Read Messages:\n");
-    for(mail = emailHead; mail; mail = mail->next){
-        if(mail->read){
+    emailHead = readHead;
+    //for(mail = emailHead; mail; mail = mail->next){
+    for(pp=&emailHead; *pp; pp=&(*pp)->next){
+        if((*pp)->read){
             c++;
-            printf("%d Sender: %s, Subject: %s\n", c, mail->from, mail->subject);
+            printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
         }
     }
     printf("Unread Messages:\n");
-    for(mail = emailHead; mail; mail = mail->next){
-        if(!mail->read){
+    for(*pp = unreadHead; *pp; pp=&(*pp)->next){
+        if(!(*pp)->read){
             c++;
-            printf("%d Sender: %s, Subject: %s\n", c, mail->from, mail->subject);
+            printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
         }
     }
     
@@ -62,9 +66,11 @@ void displayList(){
 
 void processRegularMessage(message *mess){
     command_type commandType;
-    email **pp, *newEmail, *mail;
+    int i;
+    email **pp, *newEmail, *mail, *temp, *emailPtr;
     command *com;
     com = (command *)mess->payload;
+    emailPtr = (email *)com->payload;
     commandType = com->type;
     
     if(commandType == LISTMAILCMD){
@@ -72,16 +78,35 @@ void processRegularMessage(message *mess){
             maxMailNum = com->ret;
             curr_count = 0;
             printf("Total mails to follow = %d\n", maxMailNum);
+            while(emailHead){
+                temp = emailHead->next;
+                free(emailHead);
+                emailHead = temp;
+            }
+            readHead = NULL;
+            unreadHead = NULL;
         }
         else{            
-            for(pp=&emailHead; *pp; pp=&(*pp)->next);
+            //for(pp=&emailHead; *pp; pp=&(*pp)->next);
 
             if((newEmail = malloc(sizeof(email))) == NULL)
                 printf("No space to store a mail\n");
-            else{
+            else{//change
                 memcpy(newEmail, com->payload, sizeof(email));
-                *pp = newEmail;
-                (*pp)->next = NULL;
+                /**pp = newEmail;
+                (*pp)->next = NULL;*/
+                if(emailPtr->read){
+                    printf("Received a read message\n");
+                    for(pp=&readHead; *pp; pp=&(*pp)->next);
+                    *pp = newEmail;
+                    (*pp)->next = NULL;
+                }
+                else{
+                    printf("Received an unread message\n");
+                    for(pp=&unreadHead; *pp; pp=&(*pp)->next);
+                    *pp = newEmail;
+                    (*pp)->next = NULL;
+                }
             }
             curr_count++;
             if(curr_count == maxMailNum)
@@ -112,15 +137,17 @@ void processRegularMessage(message *mess){
     }
     else if(commandType == SHOWMEMBERSHIPCMD){
         if(com->ret == -1)
-            printf("Cannot not showmembership the mail\n");
+            printf("Cannot not showmembership\n");
         else{
-            mail = (email *)com->payload;
-            printf("%s\n", mail->message);
+            printf("Current membership is as follows:\n");
+            for(i = 0; i < com->ret; i++)
+                printf("Server %c\n", com->payload[i]);
         }
     }
     else{
         printf("Undefined command type\n");
     }
+    wait = 0;
 }
 
 static void readSpreadMessage(){
@@ -216,6 +243,7 @@ void mailSetup(){
     strcpy(mail.to, sendTo);
     strcpy(mail.subject, subject);
     strcpy(mail.message, message);
+    mail.read = 0;
     memcpy(newCommand.payload, &mail, sizeof(email));
     sendCommand(&newCommand);
 }
@@ -285,6 +313,7 @@ int parseCommand(char *command){
         strcpy(userName, command+2);
         printf("Username = %s\n", userName);
         loginUser();
+        wait = 1;
     }
 
     else if(command[0] == 'c'){
@@ -330,6 +359,7 @@ int parseCommand(char *command){
         }
 
         listHeaders();
+        wait = 1;
     }
 
     else if(command[0] == 'm'){
@@ -339,12 +369,13 @@ int parseCommand(char *command){
         }
 
         mailSetup();
+        wait = 1;
     }
 
     else if(command[0] == 'd'){
         if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
-           || l <= 2){
-            printf("Incorrect use\n");
+           || l <= 2 || !emailHead || strcmp(emailHead->to, userName)){
+            printf("Incorrect use len = %d, serverNum = %d l = %d\n", strlen(userName), serverNum, l);
             return -1;
         }
 
@@ -356,11 +387,12 @@ int parseCommand(char *command){
         }
 
         deleteMail(mailNum);
+        wait = 1;
     }
 
     else if(command[0] == 'r'){
         if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
-           || l <= 2){
+           || l <= 2 || !emailHead || strcmp(emailHead->to, userName)){
             printf("Incorrect use\n");
             return -1;
         }
@@ -373,16 +405,18 @@ int parseCommand(char *command){
         }            
 
         readMail(mailNum);
+        wait = 1;
     }
 
     else if(command[0] == 'v'){
         if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
-           || l <= 2){
+           || l != 1){
             printf("Incorrect use\n");
             return -1;
         }
 
         printMembership();
+        wait = 1;
     }
 
     else{
@@ -396,14 +430,14 @@ int parseCommand(char *command){
 
 void userCommand(){
     char command[MAX_COMMAND_LENGTH];
-    if(!curr_count){
+    if(!wait){
         //if(r == -1)
             //displayMenu();
-
+        //printf("\nUser> ");
+        //fflush(stdout);
         gets(command);
         parseCommand(command);
-        printf("\nUser> ");
-        fflush(stdout);
+        //while(wait);
     }
 
 }
@@ -437,8 +471,8 @@ int main (int argc, char ** argv)
     E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
     
     displayMenu();
-    printf("\nUser> ");
-    fflush(stdout);
+    //printf("\nUser> ");
+    //fflush(stdout);
 
     E_handle_events();
 
