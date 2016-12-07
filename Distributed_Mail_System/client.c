@@ -14,6 +14,7 @@ int serverNum;
 int maxMailNum;
 char private_group[MAX_GROUP_NAME];
 char server_group[MAX_GROUP_NAME];
+char server_mem_group[MAX_GROUP_NAME];
 static  mailbox Mbox;
 static  char    Spread_name[80];
 static	char	User[80];
@@ -21,6 +22,8 @@ static  int     To_exit = 0;
 static  int     curr_count = 0;
 static  int     wait = 0;
 email *emailHead, *readHead, *unreadHead;
+
+int connected;  /* global boolean, indicating connection state */
 
 int sendCommand(command *newCommand){
     int ret;
@@ -63,6 +66,54 @@ void displayList(){
     
     curr_count = 0;
 }
+
+
+int connectToServer(){
+    int ret;
+    ret = SP_join( Mbox, server_mem_group);
+    if (ret < 0){
+	server_mem_group[0] = '\0';
+	return -1;
+    }
+
+    connected = 1;
+    return 0;
+}
+/* */
+int checkConnection(char * groupName){
+    
+
+
+
+}
+
+
+
+void processRegMembershipMessage(char * sender, int num_groups, 
+				 char groups[][MAX_GROUP_NAME], 
+				 int16 mess_type, char * mess){
+
+    int i;
+    int found;
+
+    found = 0;
+    /* check if membership includes server */
+
+    for (i = 0 ; i < num_groups ; i ++){
+	if (strcmp(&groups[i][0], server_mem_group) == 0){
+	    found = 1;
+	    break;
+	}
+    }
+
+    if (!found){
+	printf("Disconnected from Server%c\n",  server_group[22]);
+	server_mem_group[0] = '\0';
+	connected = 0;
+    }
+}
+
+
 
 void processRegularMessage(message *mess){
     command_type commandType;
@@ -191,8 +242,17 @@ static void readSpreadMessage(){
     {
         processRegularMessage((message *)mess);
     }
-    else if( Is_membership_mess( service_type ) )
+    else if( Is_membership_mess( service_type ) ){
         printf("Membership changed\n");
+	
+	if     ( Is_reg_memb_mess( service_type ) )
+	{
+	    processRegMembershipMessage(sender, num_groups, target_groups, 
+				 mess_type, mess);
+	}
+
+    }
+
     else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
 }
 
@@ -331,25 +391,38 @@ int parseCommand(char *command){
         switch(serverNum){
             case 1:
                 sprintf(server_group, "%s", SERVER_1_GROUP );
+                sprintf(server_mem_group, "%s", SERVER_1_MEM );
             break;
 
             case 2:
                 sprintf(server_group, "%s", SERVER_2_GROUP );
+                sprintf(server_mem_group, "%s", SERVER_2_MEM );
+
             break;
 
             case 3:
                 sprintf(server_group, "%s", SERVER_3_GROUP );
+                sprintf(server_mem_group, "%s", SERVER_3_MEM );
+
             break;
 
             case 4:
                 sprintf(server_group, "%s", SERVER_4_GROUP );
+                sprintf(server_mem_group, "%s", SERVER_4_MEM );
+
             break;
 
             case 5:
                 sprintf(server_group, "%s", SERVER_5_GROUP );
+                sprintf(server_mem_group, "%s", SERVER_5_MEM );
+
             break;
         }            
             printf("server_group = %s\n", server_group);
+	    if ( connectToServer() < 0){
+		printf("Could not connect to server %c\n", server_group[22]);
+	    }
+
     }
 
     else if(command[0] == 'l'){
@@ -448,7 +521,8 @@ int main (int argc, char ** argv)
     int ret;
     sp_time test_timeout;
 
-    
+    connected = 0; /* set to not connected */
+
     test_timeout.sec = TEST_TIMEOUT_SEC;
     test_timeout.usec = TEST_TIMEOUT_USEC;
 
