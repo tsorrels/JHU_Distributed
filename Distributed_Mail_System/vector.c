@@ -78,7 +78,12 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
 
     if(*pp && (*pp)->mailID.index == targetID.index){
         for(; *pp && (*pp)->mailID.procID <
-		targetID.index; pp=&(*pp)->next);
+		targetID.procID; pp=&(*pp)->next);
+        if((*pp)->mailID.procID == targetID.procID){
+            printf("The mail already exists.\n");
+            free(newEmail);
+            return 1;
+        }
         temp = (*pp);
         *pp = newEmail;
         newEmail = temp;

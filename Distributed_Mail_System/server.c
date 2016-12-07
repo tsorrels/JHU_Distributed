@@ -576,8 +576,11 @@ int markAsRead(update * updatePtr){
 		       updatePtr->user_name, targetID.procID, 
 		       targetID.index);
 	    /* mark email as read */
-	    emailPtr->read = 1;
-	    returnValue = 0;
+        if(emailPtr->read == 0){
+            emailPtr->read = 1;
+            returnValue = 0;
+            writeUser(userPtr);
+        }
 	}
 	else{
 	    if (debug)
@@ -623,6 +626,8 @@ int addMail(update * updatePtr){
     /* insert into user's email vector */
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
+    if(checkError == 0)
+        writeUser(userPtr);
 	if (debug)
 	  printf("in add mail, returned from emailvectorinsert added mail to inbox of %s\n", userPtr->name);
     }
@@ -662,8 +667,11 @@ int deleteMail(update * deleteUpdate){
 		       targetID.index);
 	    /* mark email as invalid */
 	    //emailPtr->valid = 0;
-	    email_vector_delete(&userPtr->emails, targetID);
-	    returnValue = 0;
+	    returnValue = email_vector_delete(&userPtr->emails, targetID);
+
+        if(returnValue == 0)
+            writeUser(userPtr);
+	    //returnValue = 0;
 	}
 	else{
 	    if (debug)
@@ -709,6 +717,9 @@ int addUser(char * user_name){
  	local_state.users[index].valid = 1;	
 	}*/
     checkError = user_vector_insert(&local_state.users, user_name);
+
+    if(checkError == 0)
+        writeUserList(&local_state);
 
     if (checkError > 0){
         if(debug)
@@ -769,11 +780,18 @@ int updateVector(update * updatePtr){
 int applyUpdate(char * mess){
     message * messagePtr;
     update * updatePtr;
-    int returnValue;
+    int returnValue, index;
 
     returnValue = 0;
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
+
+    storeUpdate(updatePtr);
+    updateVector(updatePtr);
+    index = updatePtr->mailID.procID -1;
+
+    writeUpdateBuffer(&local_state, index);
+    writeUpdateMatrix(&local_state);
 
     /* check if we already received/applied this update */
     //TODO: check if this is a lower LTS than what we already have
@@ -803,12 +821,13 @@ int applyUpdate(char * mess){
 
     /* increment update counter */
     //TODO: verify
-    local_state.updateIndex = max(local_state.updateIndex + 1,
+    if(returnValue == 0)
+        local_state.updateIndex = max(local_state.updateIndex + 1,
 				  updatePtr->mailID.index);
     //local_state.updateIndex ++;
 
-    storeUpdate(updatePtr);
-    updateVector(updatePtr);
+    //storeUpdate(updatePtr);
+    //updateVector(updatePtr);
 
     return returnValue;
 }
@@ -914,6 +933,7 @@ void processRegularMessage(char * sender, int num_groups,
     command * commandPtr;
     //message * responseMessage;
     message * messagePtr;
+    int ret = -1;
     int createUpdate = 0;
 
     messagePtr= (message *) mess;
@@ -932,8 +952,9 @@ void processRegularMessage(char * sender, int num_groups,
 
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
-	    applyUpdate((char *)updateMessage); // apply to state in this server
-	    sendUpdate(updateMessage);
+	    ret = applyUpdate((char *)updateMessage); // apply to state in this server
+        if(ret == 0)
+            sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
     if(debug)

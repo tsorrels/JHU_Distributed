@@ -65,13 +65,13 @@ void writeUpdateMatrix(state *local_state){
     fclose(fd);    
 }
 
-void writeUpdateBuffer(update *updatePtr, int index){
+void writeUpdateBuffer(state *local_state, int index){
     FILE *fd;
     int ret;
-    //update *updatePtr;
+    update *updatePtr;
     char oldName[30], newName[30];
 
-    //updatePtr = local_state->local_update_buffer.procVectors[index].updates;
+    updatePtr = local_state->local_update_buffer.procVectors[index].updates;
     sprintf(oldName, "updatebuffer%d", index+1);
     sprintf(newName, "updatebuffertemp%d", index+1);
 

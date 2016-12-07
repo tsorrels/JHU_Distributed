@@ -224,6 +224,10 @@ typedef struct state_type{
 
 /* function declarations */
 extern void loadState(state * local_state);
+extern void writeUserList(state *local_state);
+extern void writeUpdateMatrix(state *local_state);
+extern void writeUpdateBuffer(state *local_state, int index);
+extern void writeUser(user *userPtr);
 
 //extern int email_vector_init(email_vector * vector);
 extern int email_vector_insert(email_vector * vector, email * emailPtr);
