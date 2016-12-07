@@ -19,6 +19,7 @@ int email_vector_delete(email_vector * vector, mail_id target){
         temp = *pp;
         *pp = (*pp)->next;
         free(temp);
+        vector->size--;
         return 0;
     }
     return -1;

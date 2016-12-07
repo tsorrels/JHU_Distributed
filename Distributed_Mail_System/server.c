@@ -160,6 +160,7 @@ message * generateUpdate(char * mess){
     else if (commandPtr->type == DELETEMAILCMD){
 	updatePtr->type = DELETEMAILMSG;
 	//updatePtr->mailID = emailPtr->mailID;
+    memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
     }
 
     else if (commandPtr->type == READMAILCMD){
@@ -550,8 +551,9 @@ int markAsRead(update * updatePtr){
     mail_id targetID;
     email * emailPtr;
     int returnValue;
+    emailPtr = (email *)updatePtr->payload;
 
-    targetID = updatePtr->mailID;
+    targetID = emailPtr->mailID;
     userPtr = NULL;
     returnValue = 1;
 
@@ -607,7 +609,8 @@ int addMail(update * updatePtr){
 	printf("Adding mail to state\n");
 
     /* find user */
-    userPtr = findUser(updatePtr->user_name);
+    //userPtr = findUser(updatePtr->user_name);
+    userPtr = findUser(emailPtr->to);
 
     if (debug)
 	printf("Returned from findUser\n");
@@ -621,7 +624,7 @@ int addMail(update * updatePtr){
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
 	if (debug)
-	  printf("in add mail, returned from emailvectorinsert email_head = %p\n", userPtr->emails.emails);
+	  printf("in add mail, returned from emailvectorinsert added mail to inbox of %s\n", userPtr->name);
     }
     return checkError;
 }
@@ -633,8 +636,9 @@ int deleteMail(update * deleteUpdate){
     mail_id targetID;
     email * emailPtr;
     int returnValue;
+    emailPtr = (email *)deleteUpdate->payload;
     
-    targetID = deleteUpdate->mailID;
+    targetID = emailPtr->mailID;
     userPtr = NULL;
     returnValue = 1;
 
@@ -819,7 +823,7 @@ void sendToClient(char groupName[SIZE_PRIVATE_GROUP], message * messagePtr)
 void generateResponse(char * mess){
     command * commandPtr;
     command * newCommandPtr;
-    int i;
+    int i, size;
 
     message *messagePtr, *newMessagePtr;
     email *emailPtr, *newEmailPtr, *temp;
@@ -884,7 +888,15 @@ void generateResponse(char * mess){
         
     }
     else if(commandPtr->type == SHOWMEMBERSHIPCMD){
-        
+        size = 0;
+        for (i = 0 ; i < NUM_SERVERS ; i ++){
+        if (local_state.current_membership[i][0] != '\0'){
+            newCommandPtr->payload[size] = local_state.current_membership[i][7];
+            size++;
+        }
+        }
+        newCommandPtr->ret = size;
+        sendToClient(commandPtr->private_group, newMessagePtr);
     }
     else{
        newCommandPtr->ret = 0;
