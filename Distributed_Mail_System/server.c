@@ -222,6 +222,23 @@ int checkLowestProcID(int procIndex, int targetUpdate)
 }
 
 
+
+/* counts members of current membership that is stored in local state */
+int countMembers(){
+    int i;
+    int numMembers;
+
+    numMembers = 0;
+    
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if ( local_state.current_membership[i][0] != '\0'){
+	    numMembers ++;
+	}
+    }
+
+    return numMembers;
+}
+
 /* checks the strings of membership stored in state for a particulare serverID
  * returns 1 if serverID is in current membership in state */
 int checkMembership(int serverID){
@@ -837,7 +854,9 @@ void processRegularMessage(char * sender, int num_groups,
     int createUpdate = 0;
 
     messagePtr= (message *) mess;
-    
+
+    if (debug)
+        printf("Running processRegularMessage\n");
 
     if (messagePtr->header.type == COMMAND){
 	commandPtr = (command *) messagePtr->payload;
@@ -881,8 +900,14 @@ void processRegularMessage(char * sender, int num_groups,
 	    updateMatrix(messagePtr);
 
 	    local_state.local_update_matrix.num_matrix_recvd ++;
-	    if (local_state.local_update_matrix.num_matrix_recvd == num_groups){
-		local_state.status = NORMAL;
+	    if (local_state.local_update_matrix.num_matrix_recvd ==
+		countMembers()){
+  	        if (debug){
+		    printf("received %d matrices, continuing reconciliation\n",
+			   local_state.local_update_matrix.num_matrix_recvd);
+		}
+	      
+	        local_state.status = NORMAL;
 		continueReconcile();
 	    }
 		//sendServerUpdates(messagePtr->header.proc_num);	      
@@ -910,10 +935,32 @@ void processMembershipMessage(char * sender, int num_groups,
 			   char groups[][MAX_GROUP_NAME], 
 			   int16 mess_type, char * mess){
     int reconcile;
-
+    int i;
+    int memCtr;
+    
     if (debug)
         printf("Runing processMembershipMessage\n");
-    
+
+    if (strcmp(sender, SERVER_GROUP_NAME) != 0) {
+        if (debug)
+	    printf("Membership message not for server group\n");
+	return;
+    }
+
+
+    /* populate server group membership into state */
+    for( i=0; i < num_groups; i++ ){
+        printf("\t%s\n", &groups[i][0] );
+	/* Copy current members into state */
+	memcpy(local_state.current_membership[i], &groups[i][0],
+	       MAX_GROUP_NAME);
+    }
+	    
+    /* Mark empty slots in membership as null */	    
+    for (memCtr = i; memCtr < NUM_SERVERS ; memCtr ++){
+        local_state.current_membership[memCtr][0] = '\0';
+    }
+
     reconcile = checkReconcile(num_groups);
     local_state.status = NORMAL;
     
@@ -949,11 +996,9 @@ static	void	readSpreadMessage()
     int		 service_type;
     int16		 mess_type;
     int		 endian_mismatch;
-    int		 i,j,memCtr;
+    int		 i,j;
     int		 ret;
 
-    if (debug)
-        printf("ran readSpreadMessage\n");
     
     service_type = 0;
 
@@ -998,22 +1043,10 @@ static	void	readSpreadMessage()
 	  
 	    printf("Received REGULAR membership for group %s with %d members, where I am member %d:\n", sender, num_groups, mess_type );
 	    for( i=0; i < num_groups; i++ ){
-		printf("\t%s\n", &target_groups[i][0] );
-		/* Copy current members into state */
-		memcpy(local_state.current_membership[i], &target_groups[i][0],
-		       MAX_GROUP_NAME);
+	        printf("\t%s\n", &target_groups[i][0] );
 	    }
 	    
-	    /* Mark empty slots in membership as null */	    
-	    for (memCtr = i; memCtr < NUM_SERVERS ; memCtr ++){
-		local_state.current_membership[memCtr][0] = '\0';
-	    }
-
 	    printf("grp id is %d %d %d\n",memb_info.gid.id[0], memb_info.gid.id[1], memb_info.gid.id[2] );
-
-	    processMembershipMessage(sender, num_groups, target_groups, 
-				     mess_type, mess);
-
 
 	    
 	    if( Is_caused_join_mess( service_type ) )
@@ -1052,6 +1085,9 @@ static	void	readSpreadMessage()
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
 
+	/* process this membership message */
+	processMembershipMessage(sender, num_groups, target_groups, 
+				 mess_type, mess);
 
 
     } else if ( Is_reject_mess( service_type ) )
