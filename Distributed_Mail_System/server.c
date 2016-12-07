@@ -297,7 +297,7 @@ int checkHighestUpdate(int serverIndex, int update){
 	if ( (local_state.local_update_matrix.latest_update[i][serverIndex] >
 	      update) ||
 	     (local_state.local_update_matrix.latest_update[i][serverIndex] ==
-	      update && i > local_state.proc_ID) ){
+	      update && i > local_state.proc_ID - 1) ){
 	    return 0;
  	}
     }    
@@ -421,7 +421,7 @@ void updateMatrix(message * messagePtr){
 
     /* for each process in matrix */
     for (i = 0 ; i < NUM_SERVERS ; i ++){
-	if (i == local_state.proc_ID){
+	if (i == local_state.proc_ID - 1){
 	    /* this is the this process's vector */
 	    continue;
 	}
