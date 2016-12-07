@@ -189,9 +189,12 @@ message * generateUpdate(char * mess){
 /* sends update to spread server_group */
 void sendUpdate(message * updateMessage){
     int ret;
-
+    update * updatePtr;
+    updatePtr = (update *) updateMessage->payload;
+    
     if (debug)
-	printf("sending update\n");
+      printf("sending update <%d, %d>\n", updatePtr->mailID.procID,
+	     updatePtr->mailID.index);
 
     ret= SP_multicast(Mbox, AGREED_MESS,(const char *)local_state.server_group,
 		      1, sizeof(message), (const char *)(updateMessage) );
@@ -782,16 +785,12 @@ int applyUpdate(char * mess){
     update * updatePtr;
     int returnValue, index;
 
+
+    
     returnValue = 0;
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
 
-    storeUpdate(updatePtr);
-    updateVector(updatePtr);
-    index = updatePtr->mailID.procID -1;
-
-    writeUpdateBuffer(&local_state, index);
-    writeUpdateMatrix(&local_state);
 
     /* check if we already received/applied this update */
     //TODO: check if this is a lower LTS than what we already have
@@ -802,6 +801,16 @@ int applyUpdate(char * mess){
 		   updatePtr->mailID.procID, updatePtr->mailID.index);
 	return 1;
     }
+
+
+    
+    storeUpdate(updatePtr);
+    updateVector(updatePtr);
+    index = updatePtr->mailID.procID -1;
+
+    writeUpdateBuffer(&local_state, index);
+    writeUpdateMatrix(&local_state);
+
     
     if (updatePtr->type == NEWMAILMSG){
 	returnValue = addMail(updatePtr);
@@ -821,7 +830,7 @@ int applyUpdate(char * mess){
 
     /* increment update counter */
     //TODO: verify
-    if(returnValue == 0)
+    //if(returnValue == 0)
         local_state.updateIndex = max(local_state.updateIndex + 1,
 				  updatePtr->mailID.index);
     //local_state.updateIndex ++;
@@ -953,12 +962,12 @@ void processRegularMessage(char * sender, int num_groups,
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
 	    ret = applyUpdate((char *)updateMessage); // apply to state in this server
-        if(ret == 0)
-            sendUpdate(updateMessage);
+	    //if(ret == 0)
+	        sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
-    if(debug)
-        printf("Generating response\n");
+	if(debug)
+	    printf("Generating response\n");
 	generateResponse(mess);// mallocs a message
 	//free(responseMessage); // frees response message
     }
