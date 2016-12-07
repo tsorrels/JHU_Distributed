@@ -204,6 +204,26 @@ void sendUpdate(message * updateMessage){
 
 
 
+void printMatrix(){
+    int i;
+    int j;
+
+    int ** matrix;
+    matrix = (int **) local_state.local_update_matrix.latest_update;
+    
+    printf("Printing local matrix____________\n");
+
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+      printf(" From proc%d\t", i);
+	for (j = 0 ; j < NUM_SERVERS ; j ++){
+  	    printf(" %d", matrix[i][j]);
+	}
+	printf("\n");     
+
+    }  
+}
+
+
 /* checks update matrix for a processes in the current membership that has
  * an update index for a process procIndex + 1 that is higher that the local 
  * update index for that process AND is a lower procID */
@@ -313,12 +333,20 @@ void sendMissingUpdates(int procID, int min, int max){
     int i;
     update * updatePtr;
 
+    message * messagePtr;
+    messagePtr = malloc (sizeof(message));
+    messagePtr->header.type = UPDATE;
+    messagePtr->header.proc_num = local_state.proc_ID;
+    
     for (i = min ; i <= max ; i ++){
 	updatePtr = findUpdate(procID, i);
 	if (updatePtr != NULL){
-	    sendUpdate(updatePtr);	    
+	    memcpy(messagePtr->payload, updatePtr, sizeof(update));
+	    sendUpdate(messagePtr);	    
 	}	
     }
+
+    free(messagePtr);
 }
 
 /* checks each element in target vector to see whether an update is missing
@@ -808,7 +836,7 @@ void generateResponse(char * mess){
         if (userPtr != NULL){
             newCommandPtr->ret = userPtr->emails.size;
             if(debug){
-                printf("Inside generateresponse size = %d\n", userPtr->emails.size);
+	      printf("Inside generateresponse size = %d\n", (int) userPtr->emails.size);
             }
             sendToClient(commandPtr->private_group, newMessagePtr);
             newCommandPtr->ret = -1;
@@ -817,7 +845,7 @@ void generateResponse(char * mess){
             for(i = 0;i < userPtr->emails.size; i++){
                 printf("temp = %p\n", temp);
                 printf("i = %d size of email = %d size of command = %d from = %s, to = %s subject = %s\n", i,
-                        sizeof(email), sizeof(command), temp->from, temp->to, temp->subject);
+		       (int)sizeof(email), (int)sizeof(command), temp->from, temp->to, temp->subject);
                 memcpy(newCommandPtr->payload, temp, sizeof(email));
                 printf("Memcpy successful\n");
                 sendToClient(commandPtr->private_group, newMessagePtr);
