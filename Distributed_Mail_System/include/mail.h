@@ -27,6 +27,13 @@
 #define SERVER_4_GROUP "abrahmb1tsorrel3server4"
 #define SERVER_5_GROUP "abrahmb1tsorrel3server5"
 
+#define SERVER_1_MEM "abrahmb1tsorrel3server1mem"
+#define SERVER_2_MEM "abrahmb1tsorrel3server2mem"
+#define SERVER_3_MEM "abrahmb1tsorrel3server3mem"
+#define SERVER_4_MEM "abrahmb1tsorrel3server4mem"
+#define SERVER_5_MEM "abrahmb1tsorrel3server5mem"
+
+
 /* for spread */
 #define MAX_MESSLEN     102400
 #define MAX_VSSETS      10

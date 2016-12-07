@@ -40,6 +40,7 @@ int max(int left, int right){
 int main (int argc, char ** argv)
 {
     int	ret;
+    int	ret2;
     sp_time test_timeout;
 
     
@@ -76,26 +77,32 @@ int main (int argc, char ** argv)
     switch(local_state.proc_ID){
     case 1:
         ret = SP_join( Mbox, SERVER_1_GROUP );
+        ret2 = SP_join( Mbox, SERVER_1_MEM );
+
 	break;
 
     case 2:
         ret = SP_join( Mbox, SERVER_2_GROUP );
+        ret2 = SP_join( Mbox, SERVER_2_MEM );
 	break;
 
     case 3:
         ret = SP_join( Mbox, SERVER_3_GROUP );
+        ret2 = SP_join( Mbox, SERVER_3_MEM );
 	break;
 
     case 4:
         ret = SP_join( Mbox, SERVER_4_GROUP );
+        ret2 = SP_join( Mbox, SERVER_4_MEM );
 	break;
 
     case 5:
         ret = SP_join( Mbox, SERVER_5_GROUP );
+        ret2 = SP_join( Mbox, SERVER_5_MEM );
 	break;
     }
     
-    if( ret < 0 ) SP_error( ret );
+    if( ret < 0 || ret2 < 0) SP_error( ret );
 
     E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
 
@@ -282,10 +289,6 @@ int checkMembership(int serverID){
  * the current membership */
 int checkHighestUpdate(int serverIndex, int update){
     int i;
-    //int highestUpdate;
-    //int highestProcIndex;
-    
-    //highestUpdate = update;
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (!checkMembership(i + 1)){
@@ -395,12 +398,6 @@ void continueReconcile(){
 }
 
 
-void buildVectorDelta(update_matrix * deltaMatrix){
-
-
-
-}
-
 
 void updateMatrix(message * messagePtr){
     int i;
@@ -499,22 +496,6 @@ user * findUser(char * userName){
     if (debug)
         printf("searching for username %s\n", userName);
     
-    /* find user */
-    /*
-    userPtr = NULL;
-    i = 0;
-    while(i < MAX_USERS){
-	if (strcmp(local_state.users[i].userData.name, 
-		   userName) ==0 &&
-	    local_state.users[i].valid == 1){
-	    userPtr = (user * ) &local_state.users[i].userData;
-	    break;
-	}
-	i++;
-    }
-    if (debug && i == MAX_USERS)
-	printf("Could not find user %s\n", userName);
-    */
     userPtr = user_vector_get(&local_state.users, userName);
     
     if(debug)
@@ -531,18 +512,6 @@ email * findEmail(user * userPtr, mail_id targetID){
     email * emailPtr;
     emailPtr = email_vector_get(&userPtr->emails, targetID);  
 
-    
-    /*
-    j = 0;
-    while(j < userPtr->emails.size){
-	if (userPtr->emails.emails[j].valid == 1 &&
-	    userPtr->emails.emails[j].mailID.procID == targetID.procID &&
-	    userPtr->emails.emails[j].mailID.index == targetID.index){
-	
-	    emailPtr = &userPtr->emails.emails[j];
-	    break;
-	}
-	}*/
     return emailPtr;
 }
 
@@ -615,7 +584,6 @@ int addMail(update * updatePtr){
 	printf("Adding mail to state\n");
 
     /* find user */
-    //userPtr = findUser(updatePtr->user_name);
     userPtr = findUser(emailPtr->to);
 
     if (debug)
@@ -693,32 +661,12 @@ int deleteMail(update * deleteUpdate){
  * return -1 if vector_insert fails
  * user_name must be null terminated */
 int addUser(char * user_name){
-    //int i;
-    //int index;
     int checkError;
-
-    //index = -1;
 
     if (debug)
 	printf("Adding user %s\n", user_name);
 
     
-/*
-    for (i = 0 ; i < MAX_USERS ; i ++){
-	if (local_state.users[i].valid == 0){
-	    index = i;
-	}
-    }
-
-    if (index != -1){
-	checkError=email_vector_init(&local_state.users[index].userData.emails);
-	if (checkError < 0){
-	    perror("ERROR: failed email_vector_init for new user\n");
-	    return -1;   	    
-	}
-	strcpy(local_state.users[index].userData.name, user_name);
- 	local_state.users[index].valid = 1;	
-	}*/
     checkError = user_vector_insert(&local_state.users, user_name);
 
     if(checkError == 0)
