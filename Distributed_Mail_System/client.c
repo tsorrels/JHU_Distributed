@@ -43,14 +43,14 @@ int sendCommand(command *newCommand){
 
 void displayList(){
     //email *mail, *read, *unread;
-    email **pp;
+    email *pp;
     int c = 0;
     printf("\nUsername: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
-    printf("\nRead Messages:\n");
-    emailHead = readHead;
+    //printf("\nRead Messages:\n");
+    //emailHead = readHead;
     //for(mail = emailHead; mail; mail = mail->next){
-    for(pp=&emailHead; *pp; pp=&(*pp)->next){
+    /*for(pp=&emailHead; *pp; pp=&(*pp)->next){
         if((*pp)->read){
             c++;
             printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
@@ -61,6 +61,16 @@ void displayList(){
         if(!(*pp)->read){
             c++;
             printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
+        }
+    }*/
+    
+    for(pp=emailHead; pp; pp=pp->next){
+        c++;
+        if(pp->read){
+            printf("%d  Sender: %s, Subject: %s\n", c, pp->from, pp->subject);
+        }
+        else{
+            printf("%d* Sender: %s, Subject: %s\n", c, pp->from, pp->subject);
         }
     }
     
@@ -152,8 +162,12 @@ void processRegularMessage(message *mess){
                 free(emailHead);
                 emailHead = temp;
             }
-            readHead = NULL;
-            unreadHead = NULL;
+            if(maxMailNum == 0){
+                printf("\nUser> ");
+                fflush(stdout);
+            }
+            //readHead = NULL;
+            //unreadHead = NULL;
         }
         else{            
             //for(pp=&emailHead; *pp; pp=&(*pp)->next);
@@ -162,9 +176,10 @@ void processRegularMessage(message *mess){
                 printf("No space to store a mail\n");
             else{//change
                 memcpy(newEmail, com->payload, sizeof(email));
-                /**pp = newEmail;
-                (*pp)->next = NULL;*/
-                if(emailPtr->read){
+                for(pp=&emailHead; *pp; pp=&(*pp)->next);
+                *pp = newEmail;
+                (*pp)->next = NULL;
+                /*if(emailPtr->read){
                     for(pp=&readHead; *pp; pp=&(*pp)->next);
                     *pp = newEmail;
                     (*pp)->next = NULL;
@@ -173,7 +188,7 @@ void processRegularMessage(message *mess){
                     for(pp=&unreadHead; *pp; pp=&(*pp)->next);
                     *pp = newEmail;
                     (*pp)->next = NULL;
-                }
+                }*/
             }
             curr_count++;
             if(curr_count == maxMailNum){
