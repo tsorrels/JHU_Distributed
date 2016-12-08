@@ -14,6 +14,7 @@ void writeUserList(state *local_state){
     user *temp;
     FILE *fd;
     char newName[30];
+    int ret;
     temp = local_state->users.user_head;
 
     sprintf(newName, "userlisttemp");
@@ -23,7 +24,10 @@ void writeUserList(state *local_state){
         return;
     }
     while(temp){
-        fprintf(fd, "%s\n", temp->name);
+        //fprintf(fd, "%s\n", temp->name);
+        ret = fwrite(temp->name, MAX_USER_LENGTH, 1, fd);
+        if(ret != 1)
+            printf("Error writing userlist to file\n");
         temp = temp->next;
     }
 
@@ -39,7 +43,7 @@ void writeUserList(state *local_state){
 void writeUpdateMatrix(state *local_state){
     FILE *fd;
     update_matrix *matrix;
-    int i;
+    int i, ret;
     char newName[30];
 
     matrix = &local_state->local_update_matrix;
@@ -51,9 +55,14 @@ void writeUpdateMatrix(state *local_state){
     }
 
     for(i = 0; i < NUM_SERVERS; i++){
-        fprintf(fd, "%d %d %d %d %d\n", matrix->latest_update[i][0],
+        //for(j = 0; j < NUM_SERVERS; j++){
+        /*fprintf(fd, "%d %d %d %d %d\n", matrix->latest_update[i][0],
             matrix->latest_update[i][1], matrix->latest_update[i][2],
-            matrix->latest_update[i][3], matrix->latest_update[i][4]);
+            matrix->latest_update[i][3], matrix->latest_update[i][4]);*/
+            ret = fwrite(matrix->latest_update[i], sizeof(int), NUM_SERVERS, fd);
+            if(ret != NUM_SERVERS)
+                printf("Error writing matrix to the file\n");
+        //}
     }
 
     if(remove(UPDATEMATRIX) != 0)
@@ -81,8 +90,8 @@ void writeUpdateBuffer(state *local_state, int index){
     }
 
     for(; updatePtr; updatePtr = updatePtr->next){
-        if((ret = fwrite(updatePtr, sizeof(update), 1, fd)) != sizeof(update)){
-            printf("Error writing update buffer file\n");
+        if((ret = fwrite(updatePtr, sizeof(update), 1, fd)) != 1){
+            printf("Error writing update buffer file ret = %d, sizeof update = %d\n", ret, sizeof(update));
             fclose(fd);
             return;
         }
@@ -112,7 +121,7 @@ void writeUser(user *userPtr){
 
     emailPtr = userPtr->emails.emails;
     for(; emailPtr; emailPtr = emailPtr->next){
-        if((ret = fwrite(emailPtr, sizeof(email), 1, fd)) != sizeof(email)){
+        if((ret = fwrite(emailPtr, sizeof(email), 1, fd)) != 1){
             printf("Error writing user %s file\n", newName);
             fclose(fd);
             return;

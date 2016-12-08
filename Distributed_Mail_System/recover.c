@@ -35,15 +35,16 @@
 
 static void recoverUpdateMatrix(update_matrix *matrix){
     FILE *fd;
-    int temp[NUM_SERVERS], i, j;
+    int temp[NUM_SERVERS], i, j, ret;
     
     if((fd = fopen(UPDATEMATRIX, "r")) == NULL){
         printf("Error opening update matrix file\n");
         return;
     }
     i = 0;
-    while(fscanf(fd, "%d %d %d %d %d", &temp[0], &temp[1], &temp[2],
-                &temp[3], &temp[4]))
+    //while((ret = fscanf(fd, "%d %d %d %d %d", &temp[0], &temp[1], &temp[2],
+                //&temp[3], &temp[4]))
+    while((ret = fread(temp, sizeof(int), NUM_SERVERS, fd)) == NUM_SERVERS)
     {
         for(j = 0; j < NUM_SERVERS; j++)
             matrix->latest_update[i][j] = temp[j];
@@ -78,7 +79,7 @@ static void recoverUpdateBuffer(update_buffer *buffer){
         updatePtr = buffer->procVectors[i-1].updates;
         //while(fscanf(fd, "%d %s %d %d %d %d %d %s %s %s", type, user_name, &procID, 
         //            &index, &read, &procID1, &index1, from, to, subject))
-        while((ret = fread(newUpdate, sizeof(update), 1, fd)) == sizeof(update))
+        while((ret = fread(newUpdate, sizeof(update), 1, fd)) == 1)
         {
             /*newUpdate->type = type;
             strcpy(newUpdate->user_name, user_name);
@@ -126,11 +127,11 @@ static void recoverUser(user *userPtr){
     count = 0;
     //while(fscanf(userFD, "%d %d %d %s %s %s", &read, &procID, &index,
     //            from, to, subject))
-    if((newEmail = malloc(sizeof(email))) != NULL){
+    if((newEmail = malloc(sizeof(email))) == NULL){
             printf("Error loading the email\n");
             return;
     }
-    while((ret = fread(newEmail, sizeof(email), 1, userFD)) == sizeof(email))
+    while((ret = fread(newEmail, sizeof(email), 1, userFD)) == 1)
     {
         /*newEmail->read = read;
         newEmail->mailID.procID = procID;
@@ -151,7 +152,7 @@ static void recoverUser(user *userPtr){
             temp = newEmail;
         }
         count++;
-        if((newEmail = malloc(sizeof(email))) != NULL){
+        if((newEmail = malloc(sizeof(email))) == NULL){
             printf("Error loading the email\n");
             return;
         }
@@ -164,8 +165,10 @@ static void recoverUser(user *userPtr){
 static void recoverUserList(FILE *fd, state *local_state){
     char name[MAX_USER_LENGTH];
     user *temp, *newUser;
+    int ret;
     local_state->users.user_head = NULL;
-    while(fscanf(fd, "%s", name)){
+    //while(ret = fread(fd, "%s", name)){
+    while((ret = fread(name, MAX_USER_LENGTH, 1, fd)) == 1){
         if((newUser = malloc(sizeof(user))) == NULL){
             printf("Error loading the usernames\n");
             return;
@@ -191,7 +194,6 @@ void loadState(state * local_state){
     FILE *userListFD;
     user *temp;
     stateExists = 1;
-
 
     /*if (stat("./recovery", &st) == -1) {
         //mkdir("./recovery", 0700);
