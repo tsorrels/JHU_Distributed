@@ -158,6 +158,8 @@ update * findUpdate(int procID, int updateIndex){
     update_vector * targetVector;
     targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
     //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
+
+    printf("calling update vector get\n");
     /* return pointer to update, or NULL */
     return update_vector_get(targetVector , updateIndex);	
 }
@@ -329,6 +331,9 @@ int checkMembership(int serverID){
 int checkHighestUpdate(int serverIndex, int update){
     int i;
 
+    if (debug)
+      printf("checking HighestUpdate for server index %d\n", serverIndex);
+    
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (!checkMembership(i + 1)){
 	    continue;
@@ -343,10 +348,17 @@ int checkHighestUpdate(int serverIndex, int update){
 	      update) ||
 	     (local_state.local_update_matrix.latest_update[i][serverIndex] ==
 	      update && i > local_state.proc_ID - 1) ){
+	    if (debug)
+	        printf("checking HighestUpdate returning 1\n");
+
 	    return 0;
  	}
     }    
 
+    if (debug)
+      printf("checking HighestUpdate returning 1\n");
+
+    
     return 1;
 }
 
@@ -357,6 +369,9 @@ int getLowestUpdate(int serverIndex){
     int lowestUpdate = INT_MAX;
     int i;
 
+    if (debug)
+      printf("Getting lowest update for server %d\n", serverIndex);
+    
     for (i = 0 ; i < NUM_SERVERS ; i ++){
         if(i == local_state.proc_ID - 1){
 	    continue;
@@ -372,6 +387,10 @@ int getLowestUpdate(int serverIndex){
 	}
     }    
 
+    if (debug)
+      printf("In getlowestUpdate returning %d\n", lowestUpdate);
+
+    
     return lowestUpdate;
 }
 
@@ -380,6 +399,10 @@ void sendMissingUpdates(int procID, int min, int max){
     int i;
     update * updatePtr;
 
+    if(debug)
+      printf("sending missing updates for procID%d, min %d max %d\n",
+	     procID, min, max);
+    
     message * messagePtr;
     messagePtr = malloc (sizeof(message));
     messagePtr->header.type = UPDATE;
@@ -387,13 +410,21 @@ void sendMissingUpdates(int procID, int min, int max){
     
     for (i = min ; i <= max ; i ++){
 	updatePtr = findUpdate(procID, i);
+	printf("returned from findUpdate\n");
 	if (updatePtr != NULL){
+	  
 	    memcpy(messagePtr->payload, updatePtr, sizeof(update));
+	    printf("memcpy complete\n");
 	    sendUpdate(messagePtr);	    
 	}	
     }
 
     free(messagePtr);
+
+    if(debug)
+      printf("finished sending missing updates\n");
+
+
 }
 
 /* checks each element in target vector to see whether an update is missing
@@ -434,6 +465,9 @@ void continueReconcile(){
 
     purgeUpdateBuffer();
 
+    if (debug)
+        printf("Purged updates in continueReconcile\n");
+    
     localVector =
       local_state.local_update_matrix.latest_update[local_state.proc_ID - 1];
 
@@ -450,11 +484,13 @@ void continueReconcile(){
 	if (checkHighestUpdate(i, localVector[i])){
 	    lowestUpdate = getLowestUpdate(i);
 	    if (lowestUpdate < localVector[i]){
-		sendMissingUpdates(i, lowestUpdate, localVector[i]);
-	    }   
+		sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
+	    }
+	    
 	}
 	//targetVector = local_state.local_update_matrix.latest_update[i];
 	//checkSendUpdates(localVector, targetVector);
+	printf("completed loop in continueReconcile, i = %d", i);
     }
 }
 
@@ -1204,15 +1240,17 @@ static	void	readSpreadMessage()
 			printf("\t%s\n", members[j] );
 		}
 	    }
+
+	    	/* process this membership message */
+	processMembershipMessage(sender, num_groups, target_groups, 
+				 mess_type, mess);
+
 	}else if( Is_transition_mess(   service_type ) ) {
 	    printf("received TRANSITIONAL membership for group %s\n", sender );
 	}else if( Is_caused_leave_mess( service_type ) ){
 	    printf("received membership message that left group %s\n", sender );
 	}else printf("received incorrecty membership message of type 0x%x\n", service_type );
 
-	/* process this membership message */
-	processMembershipMessage(sender, num_groups, target_groups, 
-				 mess_type, mess);
 
 
     } else if ( Is_reject_mess( service_type ) )
