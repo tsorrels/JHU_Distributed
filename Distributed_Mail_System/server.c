@@ -5,7 +5,11 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
+
 
 #include <time.h>
 #include <sys/time.h>
@@ -45,7 +49,15 @@ int main (int argc, char ** argv)
     sp_time test_timeout;
     update *updatePtr;
     message mess;
+    struct stat st;
+    
+    if (stat("./recovery_files", &st) == -1) {
+      mkdir("./recovery_files", 0700);
+    }
 
+    chdir("./recovery_files");
+
+    
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
     test_timeout.usec = TEST_TIMEOUT_USEC;
