@@ -212,8 +212,8 @@ void loadState(state * local_state){
 
     if (stateExists == 1){
 	recoverUserList(userListFD, local_state);
-    }
     fclose(userListFD);
+    }
 
     temp = local_state->users.user_head;
     while(temp != NULL){
