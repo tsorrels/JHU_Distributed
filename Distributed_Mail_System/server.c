@@ -933,18 +933,13 @@ void generateResponse(char * mess){
             sendToClient(commandPtr->private_group, newMessagePtr);
             newCommandPtr->ret = -1;
             temp = userPtr->emails.emails;
-            printf("Entering for loop\n");
             for(i = 0;i < userPtr->emails.size; i++){
-                printf("temp = %p\n", temp);
                 printf("i = %d size of email = %d size of command = %d from = %s, to = %s subject = %s\n", i,
 		       (int)sizeof(email), (int)sizeof(command), temp->from, temp->to, temp->subject);
                 memcpy(newCommandPtr->payload, temp, sizeof(email));
-                printf("Memcpy successful\n");
                 sendToClient(commandPtr->private_group, newMessagePtr);
-                printf("Send to client successful\n");
                 temp = temp->next;
             }
-            printf("for loop successfull\n");
         }
         else{
             newCommandPtr->ret = 0;
