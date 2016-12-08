@@ -43,6 +43,7 @@ int main (int argc, char ** argv)
     int	ret2, i;
     sp_time test_timeout;
     update *updatePtr;
+    message mess;
 
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
@@ -71,9 +72,15 @@ int main (int argc, char ** argv)
             while(updatePtr->next != NULL){
                 updatePtr = updatePtr->next;
             }
-            applyUpdate(updatePtr, 0);
+            printf("update ptr index = %d\n", updatePtr->mailID.index);
+            memcpy(mess.payload, updatePtr, sizeof(update));
+            applyUpdate((char *)&mess, 0);
+        }
+        else{
+            printf("No updates from server %d\n", i+1);
         }
     }
+    printf("local update index = %d\n", local_state.updateIndex);
 
 
     printf("User: connected to %s with private group %s\n", Spread_name, 
@@ -743,10 +750,9 @@ int updateVector(update * updatePtr){
 int applyUpdate(char * mess, int ignoreDup){
     message * messagePtr;
     update * updatePtr;
+    email *emailPtr;
     int returnValue, index;
 
-
-    
     returnValue = 0;
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
@@ -762,15 +768,18 @@ int applyUpdate(char * mess, int ignoreDup){
 	return 1;
     }
 
+    if(ignoreDup){
+        storeUpdate(updatePtr);
+        updateVector(updatePtr);
+        index = updatePtr->mailID.procID -1;
 
-    
-    storeUpdate(updatePtr);
-    updateVector(updatePtr);
-    index = updatePtr->mailID.procID -1;
+        writeUpdateBuffer(&local_state, index);
+        writeUpdateMatrix(&local_state);
+    }
 
-    writeUpdateBuffer(&local_state, index);
-    writeUpdateMatrix(&local_state);
-
+    printf("Index of update is %d and type is %d\n", updatePtr->mailID.index, updatePtr->type);
+    emailPtr = (email *)updatePtr->payload;
+    printf("Email is from %s to %s\n", emailPtr->from, emailPtr->to);
     
     if (updatePtr->type == NEWMAILMSG){
 	returnValue = addMail(updatePtr);

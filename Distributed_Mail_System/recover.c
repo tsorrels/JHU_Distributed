@@ -60,23 +60,25 @@ static void recoverUpdateBuffer(update_buffer *buffer){
     update_type type;
     int procID, procID1, index, index1, read;*/
     int ret;
-    update *updatePtr, *temp, *newUpdate;
-    int i;
+    update *temp, *newUpdate;
+    int i,j;
+    email *emailPtr;
 
-    for(i = 1; i < NUM_SERVERS; i++){
+    for(i = 1; i <= NUM_SERVERS; i++){
         sprintf(name, "updatebuffer%d", i);
 
         if((fd = fopen(name, "r")) == NULL){
             printf("%s file doesn't exist\n", name);
-            return;
+            continue;
         }
 
         if((newUpdate = malloc(sizeof(update))) == NULL){
                 printf("Error loading the update buffer\n");
                 return;
         }
+        j = 0;
 
-        updatePtr = buffer->procVectors[i-1].updates;
+        //updatePtr = buffer->procVectors[i-1].updates;
         //while(fscanf(fd, "%d %s %d %d %d %d %d %s %s %s", type, user_name, &procID, 
         //            &index, &read, &procID1, &index1, from, to, subject))
         while((ret = fread(newUpdate, sizeof(update), 1, fd)) == 1)
@@ -92,19 +94,24 @@ static void recoverUpdateBuffer(update_buffer *buffer){
             strcpy(newEmail->subject, subject);
             fscanf(fd,"%[^\n]", newEmail->message);*/
             newUpdate->next = NULL;
-            if(updatePtr){
+            printf("Loaded update with name %s\n", newUpdate->user_name);
+            if(buffer->procVectors[i-1].updates){
                 temp->next = newUpdate;
                 temp = temp->next;
             }
             else{
-                updatePtr = newUpdate;
+                buffer->procVectors[i-1].updates = newUpdate;
                 temp = newUpdate;
             }
+            j++;
+            emailPtr = (email *)newUpdate->payload;
+            printf("Update loaded with type %d, from %s, to %s\n",newUpdate->type, emailPtr->from, emailPtr->to);
             if((newUpdate = malloc(sizeof(update))) == NULL){
                 printf("Error loading the update buffer\n");
                 return;
             }
         }
+        printf("Update ptr for server %d is %p with %d updates\n", i, buffer->procVectors[i-1].updates, j);
         free(newUpdate);
         fclose(fd);
     }
@@ -159,6 +166,7 @@ static void recoverUser(user *userPtr){
     }
     free(newEmail);
     userPtr->emails.size = count;
+    printf("%d emails recovered for user %s", count, userPtr->name);
     fclose(userFD);
 }
 
@@ -184,6 +192,7 @@ static void recoverUserList(FILE *fd, state *local_state){
             local_state->users.user_head = newUser;
             temp = newUser;
         }
+        printf("User %s recovered\n", temp->name);
     }
 }
 

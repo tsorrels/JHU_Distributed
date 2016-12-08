@@ -84,6 +84,7 @@ void writeUpdateBuffer(state *local_state, int index){
     int ret;
     update *updatePtr;
     char oldName[30], newName[30];
+    int i=0;
 
     updatePtr = local_state->local_update_buffer.procVectors[index].updates;
     sprintf(oldName, "updatebuffer%d", index+1);
@@ -100,7 +101,9 @@ void writeUpdateBuffer(state *local_state, int index){
             fclose(fd);
             return;
         }
+        i++;
     }
+    printf("%d updates written\n", i);
     /*if(remove(oldName) != 0)
         fprintf(stderr, "Error deleting the file %s.\n", oldName);
 
