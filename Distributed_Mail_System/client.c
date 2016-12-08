@@ -97,9 +97,16 @@ void processRegMembershipMessage(char * sender, int num_groups,
     int found;
     char serverName[9];// = "#Serverx";
     char nameCopy[9];
+
+    if (strcmp(sender, server_mem_group) != 0){
+        printf("Received membership message for an old group\n");
+	return;
+    }
     
     found = 0;
 
+    printf("Processing regular membership message from group %s\n", sender);
+    
     sprintf(serverName, "#Server%c", server_group[22]); 
     //serverName[7] = server_group[22];
     
@@ -108,6 +115,8 @@ void processRegMembershipMessage(char * sender, int num_groups,
     for (i = 0 ; i < num_groups ; i ++){
         memcpy(nameCopy, &groups[i][0], 8);
 	nameCopy[8] = '\0';
+	printf("%s, %s\n", nameCopy, serverName);
+
 	if (strcmp(nameCopy, serverName) == 0){
 	    found = 1;
 	    break;
@@ -397,7 +406,11 @@ int parseCommand(char *command){
             printf("Incorrect use\n");
             return -1;
         }
+	/* if in a server membership group, first leave */
+	SP_leave( Mbox, server_mem_group);
+
         switch(serverNum){
+	  
             case 1:
                 sprintf(server_group, "%s", SERVER_1_GROUP );
                 sprintf(server_mem_group, "%s", SERVER_1_MEM );
