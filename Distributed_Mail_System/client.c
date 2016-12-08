@@ -95,12 +95,20 @@ void processRegMembershipMessage(char * sender, int num_groups,
 
     int i;
     int found;
-
+    char serverName[9];// = "#Serverx";
+    char nameCopy[9];
+    
     found = 0;
+
+    sprintf(serverName, "#Server%c", server_group[22]); 
+    //serverName[7] = server_group[22];
+    
     /* check if membership includes server */
 
     for (i = 0 ; i < num_groups ; i ++){
-	if (strcmp(&groups[i][0], server_mem_group) == 0){
+        memcpy(nameCopy, &groups[i][0], 8);
+	nameCopy[8] = '\0';
+	if (strcmp(nameCopy, serverName) == 0){
 	    found = 1;
 	    break;
 	}
@@ -108,6 +116,7 @@ void processRegMembershipMessage(char * sender, int num_groups,
 
     if (!found){
 	printf("Disconnected from Server%c\n",  server_group[22]);
+	SP_leave( Mbox, server_mem_group);
 	server_mem_group[0] = '\0';
 	connected = 0;
     }
