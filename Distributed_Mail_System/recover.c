@@ -35,19 +35,29 @@
 
 static void recoverUpdateMatrix(update_matrix *matrix){
     FILE *fd;
-    int temp[NUM_SERVERS], i, j, ret;
+    int temp, ret, i ,j;
     
     if((fd = fopen(UPDATEMATRIX, "r")) == NULL){
         printf("update matrix file doesn't exist\n");
         return;
     }
-    i = 0;
     //while((ret = fscanf(fd, "%d %d %d %d %d", &temp[0], &temp[1], &temp[2],
                 //&temp[3], &temp[4]))
-    while((ret = fread(temp, sizeof(int), NUM_SERVERS, fd)) == NUM_SERVERS)
+    i = 0;
+    j = 0;
+    printf("Loading update matrix from file:\n");
+    while((ret = fread(&temp, sizeof(int), 1, fd)) == 1)
     {
-        for(j = 0; j < NUM_SERVERS; j++)
-            matrix->latest_update[i][j] = temp[j];
+        matrix->latest_update[i][j] = temp;
+        if(j == 4){
+            i++;
+            j = 0;
+            printf("%d\n", temp);
+        }
+        else{
+            j++;
+            printf("%d ", temp);
+        }
     }
     fclose(fd);
 }
@@ -166,7 +176,7 @@ static void recoverUser(user *userPtr){
     }
     free(newEmail);
     userPtr->emails.size = count;
-    printf("%d emails recovered for user %s", count, userPtr->name);
+    printf("%d emails recovered for user %s\n", count, userPtr->name);
     fclose(userFD);
 }
 

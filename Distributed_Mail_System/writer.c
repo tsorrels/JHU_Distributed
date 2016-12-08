@@ -45,7 +45,7 @@ void writeUserList(state *local_state){
 void writeUpdateMatrix(state *local_state){
     FILE *fd;
     update_matrix *matrix;
-    int i, ret;
+    int i, ret, j;
     char newName[30];
 
     matrix = &local_state->local_update_matrix;
@@ -56,15 +56,20 @@ void writeUpdateMatrix(state *local_state){
         return;
     }
 
+    printf("writing update matrix to file:\n");
     for(i = 0; i < NUM_SERVERS; i++){
-        //for(j = 0; j < NUM_SERVERS; j++){
+        for(j = 0; j < NUM_SERVERS; j++){
         /*fprintf(fd, "%d %d %d %d %d\n", matrix->latest_update[i][0],
             matrix->latest_update[i][1], matrix->latest_update[i][2],
             matrix->latest_update[i][3], matrix->latest_update[i][4]);*/
-            ret = fwrite(matrix->latest_update[i], sizeof(int), NUM_SERVERS, fd);
-            if(ret != NUM_SERVERS)
+            ret = fwrite(matrix->latest_update[i][j], sizeof(int), 1, fd);
+            if(ret != 1)
                 printf("Error writing matrix to the file\n");
-        //}
+            else{
+                printf("%d ", matrix->latest_update[i][j]);
+            }
+        }
+        printf("\n");
     }
 
     /*if(remove(UPDATEMATRIX) != 0)

@@ -41,7 +41,7 @@ int max(int left, int right){
 int main (int argc, char ** argv)
 {
     int	ret;
-    int	ret2, i;
+    int	ret2, i, j;
     sp_time test_timeout;
     update *updatePtr;
     message mess;
@@ -82,6 +82,14 @@ int main (int argc, char ** argv)
         }
     }
     printf("local update index = %d\n", local_state.updateIndex);
+
+    printf("Loaded update matrix:\n");
+    for(i = 0; i < NUM_SERVERS; i++){
+        for(j = 0; j < NUM_SERVERS; j++){
+            printf("%d ", local_state.local_update_matrix.latest_update[i][j]);
+        }
+        printf("\n");
+    }
 
 
     printf("User: connected to %s with private group %s\n", Spread_name, 
