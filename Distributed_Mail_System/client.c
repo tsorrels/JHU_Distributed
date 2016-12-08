@@ -45,9 +45,9 @@ void displayList(){
     //email *mail, *read, *unread;
     email **pp;
     int c = 0;
-    printf("Username: %s\n",userName);
+    printf("\nUsername: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
-    printf("Read Messages:\n");
+    printf("\nRead Messages:\n");
     emailHead = readHead;
     //for(mail = emailHead; mail; mail = mail->next){
     for(pp=&emailHead; *pp; pp=&(*pp)->next){
@@ -56,7 +56,7 @@ void displayList(){
             printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
         }
     }
-    printf("Unread Messages:\n");
+    printf("\nUnread Messages:\n");
     for(*pp = unreadHead; *pp; pp=&(*pp)->next){
         if(!(*pp)->read){
             c++;
@@ -201,7 +201,9 @@ void processRegularMessage(message *mess){
             printf("Could not read the mail\n");
         else{
             mail = (email *)com->payload;
-            printf("%s\n", mail->message);
+            printf("Sender: %s\nSubject: %s\nMessage: %s\n", 
+                    mail->from, mail->subject, mail->message);
+            //printf("%s\n", mail->message);
         }
     }
     else if(commandType == SHOWMEMBERSHIPCMD){
@@ -382,7 +384,7 @@ int parseCommand(char *command){
     l = strlen(command);
 
     if(command[0] == 'u'){
-        if(serverNum == 0 || l <= 2){
+        if(serverNum == 0 || l <= 2 || connected == 0){
             printf("Incorrect use\n");
             return -1;
         }
@@ -448,7 +450,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'l'){
-        if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5){
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5){
             printf("Incorrect use\n");
             return -1;
         }
@@ -458,7 +460,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'm'){
-        if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5){
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5){
             printf("Incorrect use\n");
             return -1;
         }
@@ -468,7 +470,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'd'){
-        if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5
            || l <= 2 || !emailHead || strcmp(emailHead->to, userName)){
             printf("Incorrect use len = %d, serverNum = %d l = %d\n", strlen(userName), serverNum, l);
             return -1;
@@ -486,7 +488,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'r'){
-        if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5
            || l <= 2 || !emailHead || strcmp(emailHead->to, userName)){
             printf("Incorrect use\n");
             return -1;
@@ -504,7 +506,7 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'v'){
-        if(strlen(userName) == 0 || serverNum < 1 || serverNum > 5
+        if(connected == 0 || serverNum < 1 || serverNum > 5
            || l != 1){
             printf("Incorrect use\n");
             return -1;
