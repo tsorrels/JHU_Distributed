@@ -40,8 +40,9 @@ int max(int left, int right){
 int main (int argc, char ** argv)
 {
     int	ret;
-    int	ret2;
+    int	ret2, i;
     sp_time test_timeout;
+    update *updatePtr;
 
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
@@ -55,13 +56,24 @@ int main (int argc, char ** argv)
     /* connect to spread */
     ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, 
 			      local_state.private_group, test_timeout );
-    if( ret != ACCEPT_SESSION ) 
+
+    if( ret != ACCEPT_SESSION )
     {
 	SP_error( ret );
 	Bye();
     }
-    
+
     loadState(&local_state); // define in recover.c
+
+    for(i = 0; i < NUM_SERVERS; i++){
+        updatePtr = local_state.local_update_buffer.procVectors[i].updates;
+        if(updatePtr){
+            while(updatePtr->next != NULL){
+                updatePtr = updatePtr->next;
+            }
+            applyUpdate(updatePtr, 0);
+        }
+    }
 
 
     printf("User: connected to %s with private group %s\n", Spread_name, 
@@ -728,7 +740,7 @@ int updateVector(update * updatePtr){
 
 
 
-int applyUpdate(char * mess){
+int applyUpdate(char * mess, int ignoreDup){
     message * messagePtr;
     update * updatePtr;
     int returnValue, index;
@@ -743,7 +755,7 @@ int applyUpdate(char * mess){
     /* check if we already received/applied this update */
     //TODO: check if this is a lower LTS than what we already have
     // modify
-    if (findUpdate(updatePtr->mailID.procID, updatePtr->mailID.index) != NULL){
+    if (ignoreDup && findUpdate(updatePtr->mailID.procID, updatePtr->mailID.index) != NULL){
 	if (debug)
 	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
 		   updatePtr->mailID.procID, updatePtr->mailID.index);
@@ -890,7 +902,6 @@ void processRegularMessage(char * sender, int num_groups,
     command * commandPtr;
     //message * responseMessage;
     message * messagePtr;
-    int ret = -1;
     int createUpdate = 0;
 
     messagePtr= (message *) mess;
@@ -909,7 +920,7 @@ void processRegularMessage(char * sender, int num_groups,
 
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
-	    ret = applyUpdate((char *)updateMessage); // apply to state in this server
+	    applyUpdate((char *)updateMessage, 1); // apply to state in this server
 	    //if(ret == 0)
 	        sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
@@ -924,7 +935,7 @@ void processRegularMessage(char * sender, int num_groups,
 	//TODO: check reconcile
 	/* check reconcile condition */
 
-	applyUpdate(mess);
+	applyUpdate(mess, 1);
 
     }
 
