@@ -454,6 +454,13 @@ void purgeUpdateBuffer(){
                 min = local_state.local_update_matrix.latest_update[j][i];
         }
         update_vector_delete(&local_state.local_update_buffer.procVectors[i], min);
+        if(debug){
+            printf("Purged updates for server %d till index %d\n", i+1, min);
+            if(local_state.local_update_buffer.procVectors[i].updates)
+                printf("New start index = %d\n",local_state.local_update_buffer.procVectors[i].updates->mailID.index);
+            else
+                printf("No updates left for this server\n");
+        }
     }
 }
 
