@@ -28,6 +28,7 @@ void initialize();
 void init();
 void Bye();
 static	void	readSpreadMessage();
+int applyUpdate(char * mess, int ignoreDup);
 
 
 int max(int left, int right){
@@ -393,12 +394,27 @@ void checkSendUpdates(int * localVector, int * targetVector){
     } 
 }
 
+void purgeUpdateBuffer(){
+    int i, j, min;
+
+    for(i = 0; i < NUM_SERVERS; i++){
+        min = local_state.local_update_matrix.latest_update[0][i];
+        for(j = 1; j < NUM_SERVERS; j++){
+            if(local_state.local_update_matrix.latest_update[j][i] < min)
+                min = local_state.local_update_matrix.latest_update[j][i];
+        }
+        update_vector_delete(&local_state.local_update_buffer.procVectors[i], min);
+    }
+}
 
 void continueReconcile(){
     int * localVector;
     int * targetVector;
 
     int i;
+
+    purgeUpdateBuffer();
+
     localVector =
       local_state.local_update_matrix.latest_update[local_state.proc_ID - 1];
 
@@ -959,6 +975,7 @@ void processRegularMessage(char * sender, int num_groups,
 	else{
 	    /* update local matrix */
 	    updateMatrix(messagePtr);
+        writeUpdateMatrix(&local_state);
 	    
 	    local_state.local_update_matrix.num_matrix_recvd ++;
 	    if (local_state.local_update_matrix.num_matrix_recvd ==

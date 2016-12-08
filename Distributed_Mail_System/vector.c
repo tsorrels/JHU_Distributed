@@ -25,16 +25,23 @@ int email_vector_delete(email_vector * vector, mail_id target){
     return -1;
 }
 
-int update_vector_delete(update_vector * vector, mail_id target){
-    update **pp, *temp;
+int update_vector_delete(update_vector * vector, int index){//mail_id target){
+    update *pp, *temp;
 
-    for(pp=&vector->updates; *pp && ((*pp)->mailID.index !=
+    /*for(pp=&vector->updates; *pp && ((*pp)->mailID.index !=
 		target.index || (*pp)->mailID.procID != target.procID);
         pp=&(*pp)->next);
 
     if(*pp){
         temp = *pp;
         *pp = (*pp)->next;
+        free(temp);
+        return 0;
+    }*/
+    pp = vector->updates;
+    while(pp && (pp->mailID.index < index)){
+        temp = pp;
+        pp = pp->next;
         free(temp);
         return 0;
     }

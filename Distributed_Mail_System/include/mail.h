@@ -243,7 +243,7 @@ extern email * email_vector_get(email_vector * vector, mail_id target);
 
 //extern int update_vector_init(update_vector * vector);
 extern int update_vector_insert(update_vector * vector, update * updatePtr);
-extern int update_vector_delete(update_vector * vector, mail_id target);
+extern int update_vector_delete(update_vector * vector, int index);
 extern update * update_vector_get(update_vector * vector, int updateIndex);
 
 extern int user_vector_insert(user_vector * vector, char * name);
