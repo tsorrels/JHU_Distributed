@@ -146,7 +146,7 @@ void processRegularMessage(message *mess){
         if(com->ret != -1){
             maxMailNum = com->ret;
             curr_count = 0;
-            printf("Total mails to follow = %d\n", maxMailNum);
+            printf("You have %d mails in the inbox\n", maxMailNum);
             while(emailHead){
                 temp = emailHead->next;
                 free(emailHead);
@@ -165,13 +165,11 @@ void processRegularMessage(message *mess){
                 /**pp = newEmail;
                 (*pp)->next = NULL;*/
                 if(emailPtr->read){
-                    printf("Received a read message\n");
                     for(pp=&readHead; *pp; pp=&(*pp)->next);
                     *pp = newEmail;
                     (*pp)->next = NULL;
                 }
                 else{
-                    printf("Received an unread message\n");
                     for(pp=&unreadHead; *pp; pp=&(*pp)->next);
                     *pp = newEmail;
                     (*pp)->next = NULL;
@@ -274,6 +272,9 @@ static void readSpreadMessage(){
     }
 
     else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
+
+    printf("\nUser> ");
+    fflush(stdout);
 }
 
 void Bye(){
@@ -569,8 +570,8 @@ int main (int argc, char ** argv)
     E_attach_fd( Mbox, READ_FD, readSpreadMessage, 0, NULL, HIGH_PRIORITY );
     
     displayMenu();
-    //printf("\nUser> ");
-    //fflush(stdout);
+    printf("\nUser> ");
+    fflush(stdout);
 
     E_handle_events();
 
