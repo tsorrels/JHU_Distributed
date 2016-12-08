@@ -28,16 +28,6 @@ int email_vector_delete(email_vector * vector, mail_id target){
 int update_vector_delete(update_vector * vector, int index){//mail_id target){
     update *pp, *temp;
 
-    /*for(pp=&vector->updates; *pp && ((*pp)->mailID.index !=
-		target.index || (*pp)->mailID.procID != target.procID);
-        pp=&(*pp)->next);
-
-    if(*pp){
-        temp = *pp;
-        *pp = (*pp)->next;
-        free(temp);
-        return 0;
-    }*/
     pp = vector->updates;
     while(pp && (pp->mailID.index < index)){
         temp = pp;
@@ -68,10 +58,8 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     email *newEmail, **pp, *temp;
 
     targetID = emailPtr->mailID;
-    //email_head = vector->emails;
+
     newEmail = malloc(sizeof(email));
-    
-    //printf("Inserting emial Email_head = %p\n", email_head);
 
     if(newEmail == NULL){
         perror("Failed to allocate new memory in email_vector");
@@ -98,14 +86,12 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     else{
         temp = (*pp);
         *pp = newEmail;
-        printf("temp = %p\n", temp);
         printf("Inserting email newEmail = %p, email_head = %p, from = %s, to = %s, subject = %s, message = %s\n",
                 newEmail, vector->emails, newEmail->from, newEmail->to, newEmail->subject, newEmail->message);
     }
     (*pp)->next = temp;
 
     vector->size ++;
-    printf("Email_head = %p\n", vector->emails);
     return 0;
 
 }
@@ -137,10 +123,7 @@ user * user_vector_get(user_vector * vector, char * name){
     int i=0;
 
     pp=&vector->user_head;
-    printf("Inside user_vector_get i = %d user_head = %p name = %s strcmp = %d\n", i, *pp, (*pp)->name, 
-            strcmp((*pp)->name, name));
     for(pp=&vector->user_head; *pp && strcmp((*pp)->name, name); pp=&(*pp)->next){
-        printf("Inside user_vector_get i = %d\n", i);
         i++;
     }
     return (*pp);

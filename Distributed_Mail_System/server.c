@@ -73,7 +73,6 @@ int main (int argc, char ** argv)
             while(updatePtr->next != NULL){
                 updatePtr = updatePtr->next;
             }
-            printf("update ptr index = %d\n", updatePtr->mailID.index);
             memcpy(mess.payload, updatePtr, sizeof(update));
             applyUpdate((char *)&mess, 0);
         }
