@@ -62,7 +62,7 @@ void writeUpdateMatrix(state *local_state){
         /*fprintf(fd, "%d %d %d %d %d\n", matrix->latest_update[i][0],
             matrix->latest_update[i][1], matrix->latest_update[i][2],
             matrix->latest_update[i][3], matrix->latest_update[i][4]);*/
-            ret = fwrite(matrix->latest_update[i][j], sizeof(int), 1, fd);
+            ret = fwrite(&matrix->latest_update[i][j], sizeof(int), 1, fd);
             if(ret != 1)
                 printf("Error writing matrix to the file\n");
             else{
