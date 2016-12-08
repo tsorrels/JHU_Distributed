@@ -38,7 +38,7 @@ static void recoverUpdateMatrix(update_matrix *matrix){
     int temp[NUM_SERVERS], i, j, ret;
     
     if((fd = fopen(UPDATEMATRIX, "r")) == NULL){
-        printf("Error opening update matrix file\n");
+        printf("update matrix file doesn't exist\n");
         return;
     }
     i = 0;
@@ -67,7 +67,7 @@ static void recoverUpdateBuffer(update_buffer *buffer){
         sprintf(name, "updatebuffer%d", i);
 
         if((fd = fopen(name, "r")) == NULL){
-            printf("Error opening update buffer file\n");
+            printf("%s file doesn't exist\n", name);
             return;
         }
 
@@ -120,7 +120,7 @@ static void recoverUser(user *userPtr){
     email *newEmail, *temp;
 
     if((userFD = fopen(userPtr->name, "r")) == NULL){
-        printf("Error opening userfile %s\n", userPtr->name);
+        printf("Userfile %s doesn't exist\n", userPtr->name);
         return;
     }
 
@@ -206,7 +206,6 @@ void loadState(state * local_state){
 
     if (stat(USERLIST, &st) == -1) {
         stateExists = 0;
-        return;
     }
     
     userListFD = fopen(USERLIST, "r");

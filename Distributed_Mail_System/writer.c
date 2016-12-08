@@ -31,11 +31,13 @@ void writeUserList(state *local_state){
         temp = temp->next;
     }
 
-    if(remove(USERLIST) != 0)
+    /*if(remove(USERLIST) != 0)
         fprintf(stderr, "Error deleting the file %s.\n", USERLIST);
 
 	if(rename(newName, USERLIST) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);
+        fprintf(stderr, "Error renaming %s.\n", newName);*/
+    remove(USERLIST);
+    rename(newName, USERLIST);
 
     fclose(fd);
 }
@@ -65,11 +67,14 @@ void writeUpdateMatrix(state *local_state){
         //}
     }
 
-    if(remove(UPDATEMATRIX) != 0)
+    /*if(remove(UPDATEMATRIX) != 0)
         fprintf(stderr, "Error deleting the file %s.\n", UPDATEMATRIX);
 
 	if(rename(newName, UPDATEMATRIX) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);
+        fprintf(stderr, "Error renaming %s.\n", newName);*/
+    
+    remove(UPDATEMATRIX);
+    rename(newName, UPDATEMATRIX);
 
     fclose(fd);    
 }
@@ -96,11 +101,14 @@ void writeUpdateBuffer(state *local_state, int index){
             return;
         }
     }
-    if(remove(oldName) != 0)
+    /*if(remove(oldName) != 0)
         fprintf(stderr, "Error deleting the file %s.\n", oldName);
 
 	if(rename(newName, oldName) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);
+        fprintf(stderr, "Error renaming %s.\n", newName);*/
+    
+    remove(oldName);
+    rename(newName, oldName);
 
     fclose(fd);
 }
@@ -127,11 +135,15 @@ void writeUser(user *userPtr){
             return;
         }
     }
-    if(remove(oldName) != 0)
+    /*if(remove(oldName) != 0)
         fprintf(stderr, "Error deleting the file %s.\n", oldName);
 
 	if(rename(newName, oldName) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);
+        fprintf(stderr, "Error renaming %s.\n", newName);*/
+
+    remove(oldName);
+    rename(newName, oldName);
+    
 
     fclose(fd);
 }
