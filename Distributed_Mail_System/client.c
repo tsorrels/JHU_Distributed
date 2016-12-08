@@ -176,8 +176,11 @@ void processRegularMessage(message *mess){
                 }
             }
             curr_count++;
-            if(curr_count == maxMailNum)
+            if(curr_count == maxMailNum){
                 displayList();
+                printf("\nUser> ");
+                fflush(stdout);
+            }
         }
     }
     else if(commandType == NEWUSERCMD){
@@ -215,6 +218,11 @@ void processRegularMessage(message *mess){
     }
     else{
         printf("Undefined command type\n");
+    }
+
+    if(commandType != LISTMAILCMD){
+        printf("\nUser> ");
+        fflush(stdout);
     }
     wait = 0;
 }
@@ -268,13 +276,16 @@ static void readSpreadMessage(){
 	    processRegMembershipMessage(sender, num_groups, target_groups, 
 				 mess_type, mess);
 	}
-
+        printf("\nUser> ");
+        fflush(stdout);
     }
 
-    else printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
+    else{
+        printf("received message of unknown message type 0x%x with ret %d\n", service_type, ret);
+        printf("\nUser> ");
+        fflush(stdout);
+    }
 
-    printf("\nUser> ");
-    fflush(stdout);
 }
 
 void Bye(){
