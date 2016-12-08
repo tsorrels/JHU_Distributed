@@ -410,6 +410,39 @@ void purgeUpdateBuffer(){
 void continueReconcile(){
     int * localVector;
     int * targetVector;
+    int lowestUpdate;
+    int i;
+
+    purgeUpdateBuffer();
+
+    localVector =
+      local_state.local_update_matrix.latest_update[local_state.proc_ID - 1];
+
+    
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+/*
+        if(i == local_state.proc_ID - 1){
+	    continue;
+	}
+	if (!checkMembership(i + 1)){
+	    continue;
+	}
+*/
+	if (checkHighestUpdate(i, localVector[i])){
+	    lowestUpdate = getLowestUpdate(i);
+	    if (lowestUpdate < localVector[i]){
+		sendMissingUpdates(i, lowestUpdate, localVector[i]);
+	    }   
+	}
+	//targetVector = local_state.local_update_matrix.latest_update[i];
+	//checkSendUpdates(localVector, targetVector);
+    }
+}
+
+
+void continueReconcile2(){
+    int * localVector;
+    int * targetVector;
 
     int i;
 
