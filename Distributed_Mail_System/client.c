@@ -42,27 +42,10 @@ int sendCommand(command *newCommand){
 }
 
 void displayList(){
-    //email *mail, *read, *unread;
     email *pp;
     int c = 0;
     printf("\nUsername: %s\n",userName);
     printf("Server Index: %d\n", serverNum);
-    //printf("\nRead Messages:\n");
-    //emailHead = readHead;
-    //for(mail = emailHead; mail; mail = mail->next){
-    /*for(pp=&emailHead; *pp; pp=&(*pp)->next){
-        if((*pp)->read){
-            c++;
-            printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
-        }
-    }
-    printf("\nUnread Messages:\n");
-    for(*pp = unreadHead; *pp; pp=&(*pp)->next){
-        if(!(*pp)->read){
-            c++;
-            printf("%d Sender: %s, Subject: %s\n", c, (*pp)->from, (*pp)->subject);
-        }
-    }*/
     
     for(pp=emailHead; pp; pp=pp->next){
         c++;
@@ -89,15 +72,6 @@ int connectToServer(){
     connected = 1;
     return 0;
 }
-/* */
-int checkConnection(char * groupName){
-    
-
-
-
-}
-
-
 
 void processRegMembershipMessage(char * sender, int num_groups, 
 				 char groups[][MAX_GROUP_NAME], 
@@ -105,27 +79,21 @@ void processRegMembershipMessage(char * sender, int num_groups,
 
     int i;
     int found;
-    char serverName[9];// = "#Serverx";
+    char serverName[9];
     char nameCopy[9];
 
     if (strcmp(sender, server_mem_group) != 0){
-        printf("Received membership message for an old group\n");
 	return;
     }
     
     found = 0;
 
-    printf("Processing regular membership message from group %s\n", sender);
-    
     sprintf(serverName, "#Server%c", server_group[22]); 
-    //serverName[7] = server_group[22];
     
     /* check if membership includes server */
-
     for (i = 0 ; i < num_groups ; i ++){
         memcpy(nameCopy, &groups[i][0], 8);
 	nameCopy[8] = '\0';
-	printf("%s, %s\n", nameCopy, serverName);
 
 	if (strcmp(nameCopy, serverName) == 0){
 	    found = 1;
@@ -146,10 +114,9 @@ void processRegMembershipMessage(char * sender, int num_groups,
 void processRegularMessage(message *mess){
     command_type commandType;
     int i;
-    email **pp, *newEmail, *mail, *temp, *emailPtr;
+    email **pp, *newEmail, *mail, *temp;
     command *com;
     com = (command *)mess->payload;
-    emailPtr = (email *)com->payload;
     commandType = com->type;
     
     if(commandType == LISTMAILCMD){
@@ -166,29 +133,16 @@ void processRegularMessage(message *mess){
                 printf("\nUser> ");
                 fflush(stdout);
             }
-            //readHead = NULL;
-            //unreadHead = NULL;
         }
         else{            
-            //for(pp=&emailHead; *pp; pp=&(*pp)->next);
 
             if((newEmail = malloc(sizeof(email))) == NULL)
                 printf("No space to store a mail\n");
-            else{//change
+            else{
                 memcpy(newEmail, com->payload, sizeof(email));
                 for(pp=&emailHead; *pp; pp=&(*pp)->next);
                 *pp = newEmail;
                 (*pp)->next = NULL;
-                /*if(emailPtr->read){
-                    for(pp=&readHead; *pp; pp=&(*pp)->next);
-                    *pp = newEmail;
-                    (*pp)->next = NULL;
-                }
-                else{
-                    for(pp=&unreadHead; *pp; pp=&(*pp)->next);
-                    *pp = newEmail;
-                    (*pp)->next = NULL;
-                }*/
             }
             curr_count++;
             if(curr_count == maxMailNum){
@@ -219,7 +173,6 @@ void processRegularMessage(message *mess){
             mail = (email *)com->payload;
             printf("Sender: %s\nSubject: %s\nMessage: %s\n", 
                     mail->from, mail->subject, mail->message);
-            //printf("%s\n", mail->message);
         }
     }
     else if(commandType == SHOWMEMBERSHIPCMD){
@@ -284,7 +237,6 @@ static void readSpreadMessage(){
         processRegularMessage((message *)mess);
     }
     else if( Is_membership_mess( service_type ) ){
-        printf("Membership changed\n");
 	
 	if     ( Is_reg_memb_mess( service_type ) )
 	{
@@ -337,12 +289,17 @@ void mailSetup(){
     char message[MAX_MESSAGE_SIZE];
 
     printf("to: ");
-    gets(sendTo);
+    fgets(sendTo, MAX_USER_LENGTH, stdin);
+    sendTo[strlen(sendTo) - 1] = '\0';
     printf("subject: ");
-    gets(subject);
+    fgets(subject, MAX_SUBJECT_LENGTH, stdin);
+    subject[strlen(subject) - 1] = '\0';
     printf("message: ");
-    gets(message);
+    fgets(message, MAX_MESSAGE_SIZE, stdin);
+    message[strlen(message) - 1] = '\0';
 
+
+    
     newCommand.type = NEWMAILCMD;
     strcpy(mail.from, userName);
     strcpy(newCommand.user_name, userName);
@@ -416,7 +373,6 @@ int parseCommand(char *command){
             return -1;
         }
 
-        //strncpy(userName, command+2, l-2);
         strcpy(userName, command+2);
         printf("Username = %s\n", userName);
         loginUser();
@@ -487,8 +443,8 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'm'){
-        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5
-            || l != 1){
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 ||
+	   serverNum > 5 || l != 1){
             printf("Incorrect use\n");
             return -1;
         }
@@ -500,7 +456,7 @@ int parseCommand(char *command){
     else if(command[0] == 'd'){
         if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5
            || l <= 2 || !emailHead || strcmp(emailHead->to, userName)){
-            printf("Incorrect use len = %d, serverNum = %d l = %d\n", strlen(userName), serverNum, l);
+	  printf("Incorrect use\n");
             return -1;
         }
 
@@ -557,19 +513,14 @@ void userCommand(){
     char command[MAX_COMMAND_LENGTH];
     int ret = 0;
     if(!wait){
-        //if(r == -1)
-            //displayMenu();
-        //printf("\nUser> ");
-        //fflush(stdout);
-        gets(command);
+        fgets(command, MAX_COMMAND_LENGTH, stdin);
+	command[strlen(command) - 1] = '\0';
         ret = parseCommand(command);
         if(ret == -1){
             printf("\nUser> ");
             fflush(stdout);
         }
-        //while(wait);
     }
-
 }
 
 int main (int argc, char ** argv)

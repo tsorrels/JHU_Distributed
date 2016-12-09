@@ -25,7 +25,7 @@ int email_vector_delete(email_vector * vector, mail_id target){
     return -1;
 }
 
-int update_vector_delete(update_vector * vector, int index){//mail_id target){
+int update_vector_delete(update_vector * vector, int index){
     update *pp, *temp;
 
     pp = vector->updates;
@@ -33,7 +33,6 @@ int update_vector_delete(update_vector * vector, int index){//mail_id target){
         temp = pp;
         pp = pp->next;
         free(temp);
-	//        return 0;
     }
     vector->updates = pp;
     return 0;
@@ -58,8 +57,6 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     mail_id targetID;
     email *newEmail, **pp, *temp;
 
-    printf("email_vector_insert running\n");
-    
     targetID = emailPtr->mailID;
 
     newEmail = malloc(sizeof(email));
@@ -70,26 +67,17 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     }
     memcpy(newEmail, emailPtr, sizeof(email));
 
-    printf("entering for loop\n");
-
     
     /* find correct update index */
     for(pp=&vector->emails; *pp && (*pp)->mailID.index <
 		targetID.index; pp=&(*pp)->next);
 
-    printf("completed loop\n");
-
     
     if(*pp && (*pp)->mailID.index == targetID.index){
-      printf("data = %d\n", (*pp)->mailID.procID);
-
       for(; *pp && (*pp)->mailID.procID <
 		targetID.procID; pp=&(*pp)->next);
-      printf("completed second for loop, *pp = %p\n", (*pp));
 
-      //if ( (*pp) == NULL)
       if((*pp) != NULL && (*pp)->mailID.procID == targetID.procID ){
-            printf("The mail already exists.\n");
             free(newEmail);
             return 1;
         }
@@ -100,8 +88,6 @@ int email_vector_insert(email_vector * vector, email * emailPtr){
     else{
         temp = (*pp);
         *pp = newEmail;
-        printf("Inserting email newEmail = %p, email_head = %p, from = %s, to = %s, subject = %s, message = %s\n",
-                newEmail, vector->emails, newEmail->from, newEmail->to, newEmail->subject, newEmail->message);
     }
     (*pp)->next = temp;
 
@@ -125,12 +111,8 @@ email * email_vector_get(email_vector * vector, mail_id target){
 update * update_vector_get(update_vector * vector, int updateIndex){
     update **pp;
 
-    printf("Running in updatevectorget\n");
-    
     for(pp=&vector->updates; *pp && (*pp)->mailID.index !=
         updateIndex; pp=&(*pp)->next);
-
-    printf("returning updatevectorget %p\n", *pp);
 
     
     return (*pp);

@@ -2,7 +2,6 @@
 #include "recover.h"
 #include "mail.h"
 #include <unistd.h>
-//#include <ioctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -24,18 +23,12 @@ void writeUserList(state *local_state){
         return;
     }
     while(temp){
-        //fprintf(fd, "%s\n", temp->name);
         ret = fwrite(temp->name, MAX_USER_LENGTH, 1, fd);
         if(ret != 1)
             printf("Error writing userlist to file\n");
         temp = temp->next;
     }
 
-    /*if(remove(USERLIST) != 0)
-        fprintf(stderr, "Error deleting the file %s.\n", USERLIST);
-
-	if(rename(newName, USERLIST) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);*/
     remove(USERLIST);
     rename(newName, USERLIST);
 
@@ -56,27 +49,14 @@ void writeUpdateMatrix(state *local_state){
         return;
     }
 
-    printf("writing update matrix to file:\n");
     for(i = 0; i < NUM_SERVERS; i++){
         for(j = 0; j < NUM_SERVERS; j++){
-        /*fprintf(fd, "%d %d %d %d %d\n", matrix->latest_update[i][0],
-            matrix->latest_update[i][1], matrix->latest_update[i][2],
-            matrix->latest_update[i][3], matrix->latest_update[i][4]);*/
             ret = fwrite(&matrix->latest_update[i][j], sizeof(int), 1, fd);
             if(ret != 1)
                 printf("Error writing matrix to the file\n");
-            else{
-                printf("%d ", matrix->latest_update[i][j]);
-            }
         }
-        printf("\n");
     }
 
-    /*if(remove(UPDATEMATRIX) != 0)
-        fprintf(stderr, "Error deleting the file %s.\n", UPDATEMATRIX);
-
-	if(rename(newName, UPDATEMATRIX) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);*/
     
     remove(UPDATEMATRIX);
     rename(newName, UPDATEMATRIX);
@@ -102,18 +82,11 @@ void writeUpdateBuffer(state *local_state, int index){
 
     for(; updatePtr; updatePtr = updatePtr->next){
         if((ret = fwrite(updatePtr, sizeof(update), 1, fd)) != 1){
-            printf("Error writing update buffer file ret = %d, sizeof update = %d\n", ret, sizeof(update));
             fclose(fd);
             return;
         }
         i++;
     }
-    printf("%d updates written\n", i);
-    /*if(remove(oldName) != 0)
-        fprintf(stderr, "Error deleting the file %s.\n", oldName);
-
-	if(rename(newName, oldName) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);*/
     
     remove(oldName);
     rename(newName, oldName);
@@ -143,11 +116,6 @@ void writeUser(user *userPtr){
             return;
         }
     }
-    /*if(remove(oldName) != 0)
-        fprintf(stderr, "Error deleting the file %s.\n", oldName);
-
-	if(rename(newName, oldName) == 0)
-        fprintf(stderr, "Error renaming %s.\n", newName);*/
 
     remove(oldName);
     rename(newName, oldName);

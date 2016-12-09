@@ -50,26 +50,12 @@ int main (int argc, char ** argv)
     sp_time test_timeout;
     update *updatePtr;
     message mess;
-    struct stat st;
-
-    char dir_name [30];
-
-    /*
-    sprintf(dir_name, "./recovery_files%s", argv[1]);
-    if (stat(dir_name, &st) == -1) {
-        mkdir(dir_name, 0700);
-    }
-
-
-    chdir(dir_name);
-    */
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
     test_timeout.usec = TEST_TIMEOUT_USEC;
 
     
     initialize(argc, argv);
-    init(); // TODO: this function doesn't do anything
 
 
     /* connect to spread */
@@ -97,7 +83,6 @@ int main (int argc, char ** argv)
             printf("No updates from server %d\n", i+1);
         }
     }
-    printf("local update index = %d\n", local_state.updateIndex);
 
     printf("Loaded update matrix:\n");
     for(i = 0; i < NUM_SERVERS; i++){
@@ -159,12 +144,8 @@ int main (int argc, char ** argv)
 /* searches update vector for given procID for update with given updateIndex
  * returns pointer to update, or NULL if it is not in the buffer */
 update * findUpdate(int procID, int updateIndex){
-    //int targetProcID = updateIndex->procID;
     update_vector * targetVector;
     targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
-    //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
-
-    //printf("calling update vector get\n");
     /* return pointer to update, or NULL */
     return update_vector_get(targetVector , updateIndex);	
 }
@@ -212,15 +193,12 @@ message * generateUpdate(char * mess){
 
     else if (commandPtr->type == DELETEMAILCMD){
 	updatePtr->type = DELETEMAILMSG;
-	//updatePtr->mailID = emailPtr->mailID;
-    memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
+	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
     }
 
     else if (commandPtr->type == READMAILCMD){
 	updatePtr->type = READMAILMSG;
-	//updatePtr->mailID = emailPtr->mailID;
 	memcpy(updatePtr->payload, commandPtr->payload, UPDATE_PAYLOAD_SIZE);
-	// I dont think this memcpy is necessary
     }
 
     else if (commandPtr->type == NEWMAILCMD){
@@ -261,19 +239,27 @@ void sendUpdate(message * updateMessage){
 
 
 
+void printSendUpdates(){
+  int i;
+
+  printf("Printing updates to send____________\n");
+
+  for (i = 0 ; i < NUM_SERVERS ; i ++){
+      printf("Proc%i\t%d %d\n", i, local_state.FC.min_max[i][0],
+	     local_state.FC.min_max[i][1]);
+        
+  }
+}
+
 void printMatrix(){
     int i;
     int j;
-
-    //int ** matrix;
-    //matrix =  &local_state.local_update_matrix.latest_update;
     
     printf("Printing local matrix____________\n");
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
       printf(" From proc%d\t", i+1);
 	for (j = 0 ; j < NUM_SERVERS ; j ++){
-	  //	    printf(" %d", matrix[i][j]);
 	   printf(" %d",local_state.local_update_matrix.latest_update[i][j]);
 	}
 	printf("\n");     
@@ -389,7 +375,6 @@ int getLowestUpdate(int serverIndex){
 
 int checkSendUpdatesMatrix(){
     int i;
-    int j;
 
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (local_state.FC.min_max[i][0] != -1 ||
@@ -402,14 +387,13 @@ int checkSendUpdatesMatrix(){
 
 update * getNextMissingUpdate(){
     int i;
-    int j;
     update * updatePtr;
     int lowestProcID;
     int lowestIndex;
     lowestIndex = INT_MAX;
-    lowestProcID = 6;
+    lowestProcID = 6; /* this is really index, not procID */
     updatePtr = NULL;
-
+    
 
     while(updatePtr == NULL && checkSendUpdatesMatrix()){
 	for (i = 0 ; i < NUM_SERVERS ; i ++){
@@ -422,14 +406,19 @@ update * getNextMissingUpdate(){
 	    }
 	}
 
-	updatePtr = findUpdate(lowestProcID, lowestIndex);
+	updatePtr = findUpdate(lowestProcID + 1, lowestIndex);
 	if (local_state.FC.min_max[lowestProcID][0] == 
 	    local_state.FC.min_max[lowestProcID][1]){
 	    local_state.FC.min_max[lowestProcID][0] = -1;
 	    local_state.FC.min_max[lowestProcID][1] = -1;	    
 	}
-	local_state.FC.min_max[lowestProcID][0]++;
-	lowestIndex = INT_MAX;	
+	else{
+	    local_state.FC.min_max[lowestProcID][0]++;
+	}
+	lowestIndex = INT_MAX;
+
+	if (debug)
+	  printSendUpdates();
     }
 
     return updatePtr;
@@ -440,18 +429,17 @@ update * getNextMissingUpdate(){
  * returns 1 if we sent exactly numToSend updates */
 int sendMissingUpdates(int numToSend){
     int i;
-    int j;
-    int finished;
-    int numSent;
     update * updatePtr;
-
+    
     message * messagePtr;
     messagePtr = malloc (sizeof(message));
     messagePtr->header.type = UPDATE;
     messagePtr->header.proc_num = local_state.proc_ID;
 
-    finished = 0;
-    numSent = 0;
+
+    if (debug)
+      printf("Running sendMissingUpdates\n");
+    
 
     for (i = 0 ; i < numToSend ; i ++){
 	updatePtr = getNextMissingUpdate();
@@ -465,79 +453,9 @@ int sendMissingUpdates(int numToSend){
     free(messagePtr);
 
     return 1;
-
-/*
-    for (i = 0; i < NUM_SERVERS && !finished; i ++){
-	for (j = local_state.FC.min_max[i][0] ; 
-	     j <= local_state.FC.min_max[i][1] && j != -1; j ++){
-	    updatePtr = findUpdate(i + 1, j);
-	    local_state.FC.min_max[i][0] ++;
-	    if (updatePtr != NULL){	  
-		memcpy(messagePtr->payload, updatePtr, sizeof(update));
-		sendUpdate(messagePtr);
-		numSent ++;
-		if (j == local_state.FC.min_max[i][1]){
-		    local_state.FC.min_max[i][0]= -1;
-		    local_state.FC.min_max[i][1]= -1;
-		}
-		if (numSent == numToSend){
-		    finished = 1;
-		    break;
-		}
-	    }
-	}	
-    }
-
-    free(messagePtr);
-    return finished;
-*/
 }
 
 
-/* send updates from a target process from index min to index max */
-void sendMissingUpdates2(int procID, int min, int max){
-    int i;
-    update * updatePtr;
-
-    if(debug)
-      printf("sending missing updates for procID%d, min %d max %d\n",
-	     procID, min, max);
-    
-    message * messagePtr;
-    messagePtr = malloc (sizeof(message));
-    messagePtr->header.type = UPDATE;
-    messagePtr->header.proc_num = local_state.proc_ID;
-    
-    for (i = min ; i <= max ; i ++){
-	updatePtr = findUpdate(procID, i);
-	if (updatePtr != NULL){
-	  
-	    memcpy(messagePtr->payload, updatePtr, sizeof(update));
-	    sendUpdate(messagePtr);	    
-	}	
-    }
-
-    free(messagePtr);
-
-}
-
-/* checks each element in target vector to see whether an update is missing
- * that is both in the local vector and does not exist in another proc's
- * vector that is in a) in the membership and b) lower in proc number */
-void checkSendUpdates(int * localVector, int * targetVector){
-    int i; /* server index */
-    int lowestUpdate;
-
-    for (i = 0 ; i < NUM_SERVERS ; i ++){
-	if (targetVector[i] < localVector[i] &&
-	    checkHighestUpdate(i, localVector[i]) ){
-	    /* this processes must send updates */
-	    lowestUpdate = getLowestUpdate(i);
-	    
-	    //sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
-	}
-    } 
-}
 
 void purgeUpdateBuffer(){
     int i, j, min;
@@ -561,7 +479,6 @@ void purgeUpdateBuffer(){
 
 void continueReconcile(){
     int * localVector;
-    int * targetVector;
     int lowestUpdate;
     int i;
 
@@ -572,62 +489,31 @@ void continueReconcile(){
 
     
     for (i = 0 ; i < NUM_SERVERS ; i ++){
-/*
-  if(i == local_state.proc_ID - 1){
-  continue;
-  }
-  if (!checkMembership(i + 1)){
-  continue;
-  }
-*/
 	if (checkHighestUpdate(i, localVector[i])){
 	    lowestUpdate = getLowestUpdate(i);
-	    if (lowestUpdate < localVector[i]){		
+	    if (lowestUpdate < localVector[i]){
 		/* populate flow control state */
 		local_state.FC.min_max[i][0] = lowestUpdate + 1;
 		local_state.FC.min_max[i][1] = localVector[i];
-		if(!sendMissingUpdates(MAX_SEND)){
-		    local_state.status = NORMAL;
-		}
-		//sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
 	    }	    
 	}
 	else{
 	    /* mark as no updates to send */
+
 	    local_state.FC.min_max[i][0] = -1;
 	    local_state.FC.min_max[i][1] = -1;
 
 	}
-	//targetVector = local_state.local_update_matrix.latest_update[i];
-	//checkSendUpdates(localVector, targetVector);
+
     }
+    printSendUpdates();
+    if(!sendMissingUpdates(MAX_SEND)){
+        local_state.status = NORMAL;
+    }
+
+
 }
 
-
-void continueReconcile2(){
-    int * localVector;
-    int * targetVector;
-
-    int i;
-
-    purgeUpdateBuffer();
-
-    localVector =
-      local_state.local_update_matrix.latest_update[local_state.proc_ID - 1];
-
-    
-    for (i = 0 ; i < NUM_SERVERS ; i ++){
-        if(i == local_state.proc_ID - 1){
-	    continue;
-	}
-	if (!checkMembership(i + 1)){
-	    continue;
-	}
-
-	targetVector = local_state.local_update_matrix.latest_update[i];
-	checkSendUpdates(localVector, targetVector);
-    }
-}
 
 
 
@@ -645,11 +531,9 @@ void updateMatrix(message * messagePtr){
     
     if (debug){
         printf("Updating matrix\n");
-        printf ("Matrix before update:\n");
-	printMatrix();
     }
     sentMatrix = (update_matrix * ) messagePtr->payload;
-    localMatrix = &local_state.local_update_matrix;//.latest_update;
+    localMatrix = &local_state.local_update_matrix;
 
     /* for each process in matrix */
     for (i = 0 ; i < NUM_SERVERS ; i ++){
@@ -693,15 +577,12 @@ int sendMatrix(){
     if (mess == NULL){
 	perror("Malloc failed in sendMatrix\n");
 	return -1;
-	//Bye();
     }
     mess->header.type = MATRIX;
     mess->header.proc_num = local_state.proc_ID;
     memcpy(mess->payload, &local_state.local_update_matrix, 
 	   sizeof(update_matrix));
 
-    if (debug)
-	printf("sending matrix\n");
 
     ret= SP_multicast(Mbox, AGREED_MESS,(const char *)local_state.server_group,
 		      1, sizeof(message), (const char *)(mess) );
@@ -712,7 +593,6 @@ int sendMatrix(){
 	perror("ERROR: failed to send update in sendUpdate");
 	SP_error( ret );
 	return -1;
-	//Bye();
     }
     return 0;
 }
@@ -722,16 +602,12 @@ int sendMatrix(){
  * returns pointer to that user struct, or NULL if it does not exist
  * does not check for duplicate entries for user name */
 user * findUser(char * userName){
-    //int i; 
     user * userPtr;
 
     if (debug)
         printf("searching for username %s\n", userName);
     
     userPtr = user_vector_get(&local_state.users, userName);
-    
-    if(debug)
-        printf("Returned from user_vector_get\n");
     
     return userPtr;
 }
@@ -740,7 +616,6 @@ user * findUser(char * userName){
  * userPtr must point to a valid user struct in state 
  * returns NULL if email is not in state for this user*/
 email * findEmail(user * userPtr, mail_id targetID){
-    //int j;
     email * emailPtr;
     emailPtr = email_vector_get(&userPtr->emails, targetID);  
 
@@ -806,7 +681,6 @@ int addMail(update * updatePtr){
     user * userPtr;
     email * emailPtr;
     int checkError;
-    //int returnValue;
 
     emailPtr = (email * ) updatePtr->payload;
     userPtr = NULL;
@@ -818,9 +692,6 @@ int addMail(update * updatePtr){
     /* find user */
     userPtr = findUser(emailPtr->to);
 
-    if (debug)
-      printf("Returned from findUser\n");
-
     
     if (debug && userPtr == NULL)
 	printf("Could not find user = %s in addMail\n",
@@ -829,13 +700,9 @@ int addMail(update * updatePtr){
     /* insert into user's email vector */
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
-	if (debug)
-  	    printf("returned from vector_email_insert in addMail\n");
 	
 	if(checkError == 0)
 	    writeUser(userPtr);
-	if (debug)
-	    printf("in add mail, returned from emailvectorinsert added mail to inbox of %s\n", userPtr->name);
     }
     return checkError;
 }
@@ -872,12 +739,10 @@ int deleteMail(update * deleteUpdate){
 		       deleteUpdate->user_name, targetID.procID, 
 		       targetID.index);
 	    /* mark email as invalid */
-	    //emailPtr->valid = 0;
 	    returnValue = email_vector_delete(&userPtr->emails, targetID);
 
         if(returnValue == 0)
             writeUser(userPtr);
-	    //returnValue = 0;
 	}
 	else{
 	    if (debug)
@@ -966,17 +831,14 @@ int updateVector(update * updatePtr){
 int applyUpdate(char * mess, int ignoreDup){
     message * messagePtr;
     update * updatePtr;
-    email *emailPtr;
     int returnValue, index;
-
+ 
     returnValue = 0;
     messagePtr = (message *) mess;
     updatePtr = (update *) messagePtr->payload;
 
 
     /* check if we already received/applied this update */
-    //TODO: check if this is a lower LTS than what we already have
-    // modify
     if (ignoreDup && findUpdate(updatePtr->mailID.procID, updatePtr->mailID.index) != NULL){
 	if (debug)
 	    printf("Received duplicate update procID=%i, updateIndex = %i\n",
@@ -993,9 +855,6 @@ int applyUpdate(char * mess, int ignoreDup){
         writeUpdateMatrix(&local_state);
     }
 
-    printf("Index of update is %d and type is %d\n", updatePtr->mailID.index, updatePtr->type);
-    emailPtr = (email *)updatePtr->payload;
-    printf("Email is from %s to %s\n", emailPtr->from, emailPtr->to);
     
     if (updatePtr->type == NEWMAILMSG){
 	returnValue = addMail(updatePtr);
@@ -1014,21 +873,14 @@ int applyUpdate(char * mess, int ignoreDup){
     }
 
     /* increment update counter */
-    //TODO: verify
-    //if(returnValue == 0)
-        local_state.updateIndex = max(local_state.updateIndex + 1,
+    local_state.updateIndex = max(local_state.updateIndex + 1,
 				  updatePtr->mailID.index);
-    //local_state.updateIndex ++;
-
-    //storeUpdate(updatePtr);
-    //updateVector(updatePtr);
 
     return returnValue;
 }
 
 void sendToClient(char groupName[SIZE_PRIVATE_GROUP], message * messagePtr)
 {
-    //int ret;
     SP_multicast(Mbox, AGREED_MESS,(const char *) groupName,
 		      1, sizeof(message), (const char *)(messagePtr) );    
 }
@@ -1069,21 +921,12 @@ void generateResponse(char * mess){
     }
     else if(commandPtr->type == LISTMAILCMD){
         userPtr = findUser(commandPtr->user_name);
-        if(debug){
-            printf("Inside generateResponse userptr = %p\n", userPtr);
-            printf("Inside generateresponse name = %s\n", userPtr->name);
-        }
         if (userPtr != NULL){
             newCommandPtr->ret = userPtr->emails.size;
-            if(debug){
-	      printf("Inside generateresponse size = %d\n", (int) userPtr->emails.size);
-            }
             sendToClient(commandPtr->private_group, newMessagePtr);
             newCommandPtr->ret = -1;
             temp = userPtr->emails.emails;
             for(i = 0;i < userPtr->emails.size; i++){
-                printf("i = %d size of email = %d size of command = %d from = %s, to = %s subject = %s\n", i,
-		       (int)sizeof(email), (int)sizeof(command), temp->from, temp->to, temp->subject);
                 memcpy(newCommandPtr->payload, temp, sizeof(email));
                 sendToClient(commandPtr->private_group, newMessagePtr);
                 temp = temp->next;
@@ -1117,21 +960,16 @@ void generateResponse(char * mess){
 void processRegularMessage(char * sender, int num_groups, 
 			   char groups[][MAX_GROUP_NAME], 
 			   int16 mess_type, char * mess){
-    //char * privateGroup;
     message * updateMessage;
     command * commandPtr;
-    //message * responseMessage;
     message * messagePtr;
     int createUpdate = 0;
 
     messagePtr= (message *) mess;
 
-    if (debug)
-        printf("Running processRegularMessage\n");
 
     if (messagePtr->header.type == COMMAND){
 	commandPtr = (command *) messagePtr->payload;
-	//privateGroup = commandPtr->private_group;
 
 	if (commandPtr->type==NEWMAILCMD || commandPtr->type ==NEWUSERCMD ||
 	    commandPtr->type==DELETEMAILCMD || commandPtr->type ==READMAILCMD){
@@ -1141,20 +979,16 @@ void processRegularMessage(char * sender, int num_groups,
 	if (createUpdate){
 	    updateMessage = generateUpdate(mess); // mallocs a message
 	    applyUpdate((char *)updateMessage, 1); // apply to state in this server
-	    //if(ret == 0)
 	        sendUpdate(updateMessage);
 	    free(updateMessage); // frees update message		
 	}
-	if(debug)
-	    printf("Generating response\n");
 	generateResponse(mess);// mallocs a message
-	//free(responseMessage); // frees response message
     }
 
     else if (messagePtr->header.type == UPDATE){
-	//TODO: check reconcile
 	/* check reconcile condition */
-	if(messagePtr->header.proc_num == local_state.proc_ID){
+      if(messagePtr->header.proc_num == local_state.proc_ID &&
+	 local_state.status == SENDINGUPDATES){
 	    /* send one more update */
 	    if(!sendMissingUpdates(1)){
 		local_state.status = NORMAL;
@@ -1215,8 +1049,6 @@ void processMembershipMessage(char * sender, int num_groups,
     int i;
     int memCtr;
     
-    if (debug)
-        printf("Runing processMembershipMessage\n");
 
     if (strcmp(sender, SERVER_GROUP_NAME) != 0) {
         if (debug)
@@ -1423,9 +1255,7 @@ void initialize(int argc, char ** argv){
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 
     sprintf( User, "Server%s", argv[1] );
-    //    sprintf( Spread_name, "4803"); // TODO: pull this out to config file
-    sprintf( Spread_name, "10470"); // TODO: pull this out to config file
-    //sprintf( "10470"); // TODO: pull this out to config file
+    sprintf( Spread_name, "10470");
 
     /* initialize flow control structure*/
     for (i = 0 ; i < NUM_SERVERS ; i ++){
@@ -1445,12 +1275,6 @@ void initialize(int argc, char ** argv){
 
     chdir(dir_name);
     
-}
-
-
-void init(){
-
-
 }
 
 
