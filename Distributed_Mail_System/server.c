@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -385,8 +386,116 @@ int getLowestUpdate(int serverIndex){
     return lowestUpdate;
 }
 
+
+int checkSendUpdatesMatrix(){
+    int i;
+    int j;
+
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	if (local_state.FC.min_max[i][0] != -1 ||
+	    local_state.FC.min_max[i][1] != -1){
+	    return 1;	    
+	}
+    }
+    return 0;
+}
+
+update * getNextMissingUpdate(){
+    int i;
+    int j;
+    update * updatePtr;
+    int lowestProcID;
+    int lowestIndex;
+    lowestIndex = INT_MAX;
+    lowestProcID = 6;
+    updatePtr = NULL;
+
+
+    while(updatePtr == NULL && checkSendUpdatesMatrix()){
+	for (i = 0 ; i < NUM_SERVERS ; i ++){
+	    if (local_state.FC.min_max[i][0] < 0){
+		continue;
+	    }
+	    if (local_state.FC.min_max[i][0] < lowestIndex){
+		lowestIndex = local_state.FC.min_max[i][0];
+		lowestProcID = i;
+	    }
+	}
+
+	updatePtr = findUpdate(lowestProcID, lowestIndex);
+	if (local_state.FC.min_max[lowestProcID][0] == 
+	    local_state.FC.min_max[lowestProcID][1]){
+	    local_state.FC.min_max[lowestProcID][0] = -1;
+	    local_state.FC.min_max[lowestProcID][1] = -1;	    
+	}
+	local_state.FC.min_max[lowestProcID][0]++;
+	lowestIndex = INT_MAX;	
+    }
+
+    return updatePtr;
+
+}
+
+/* returns 0 if no more updates to send 
+ * returns 1 if we sent exactly numToSend updates */
+int sendMissingUpdates(int numToSend){
+    int i;
+    int j;
+    int finished;
+    int numSent;
+    update * updatePtr;
+
+    message * messagePtr;
+    messagePtr = malloc (sizeof(message));
+    messagePtr->header.type = UPDATE;
+    messagePtr->header.proc_num = local_state.proc_ID;
+
+    finished = 0;
+    numSent = 0;
+
+    for (i = 0 ; i < numToSend ; i ++){
+	updatePtr = getNextMissingUpdate();
+	if (updatePtr == NULL){
+	    return 0;
+	}
+	memcpy(messagePtr->payload, updatePtr, sizeof(update));
+	sendUpdate(messagePtr);
+		
+    }
+    free(messagePtr);
+
+    return 1;
+
+/*
+    for (i = 0; i < NUM_SERVERS && !finished; i ++){
+	for (j = local_state.FC.min_max[i][0] ; 
+	     j <= local_state.FC.min_max[i][1] && j != -1; j ++){
+	    updatePtr = findUpdate(i + 1, j);
+	    local_state.FC.min_max[i][0] ++;
+	    if (updatePtr != NULL){	  
+		memcpy(messagePtr->payload, updatePtr, sizeof(update));
+		sendUpdate(messagePtr);
+		numSent ++;
+		if (j == local_state.FC.min_max[i][1]){
+		    local_state.FC.min_max[i][0]= -1;
+		    local_state.FC.min_max[i][1]= -1;
+		}
+		if (numSent == numToSend){
+		    finished = 1;
+		    break;
+		}
+	    }
+	}	
+    }
+
+    free(messagePtr);
+    return finished;
+*/
+}
+
+
 /* send updates from a target process from index min to index max */
-void sendMissingUpdates(int procID, int min, int max){
+void sendMissingUpdates2(int procID, int min, int max){
     int i;
     update * updatePtr;
 
@@ -424,7 +533,8 @@ void checkSendUpdates(int * localVector, int * targetVector){
 	    checkHighestUpdate(i, localVector[i]) ){
 	    /* this processes must send updates */
 	    lowestUpdate = getLowestUpdate(i);
-	    sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
+	    
+	    //sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
 	}
     } 
 }
@@ -463,19 +573,30 @@ void continueReconcile(){
     
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 /*
-        if(i == local_state.proc_ID - 1){
-	    continue;
-	}
-	if (!checkMembership(i + 1)){
-	    continue;
-	}
+  if(i == local_state.proc_ID - 1){
+  continue;
+  }
+  if (!checkMembership(i + 1)){
+  continue;
+  }
 */
 	if (checkHighestUpdate(i, localVector[i])){
 	    lowestUpdate = getLowestUpdate(i);
-	    if (lowestUpdate < localVector[i]){
-		sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
-	    }
-	    
+	    if (lowestUpdate < localVector[i]){		
+		/* populate flow control state */
+		local_state.FC.min_max[i][0] = lowestUpdate + 1;
+		local_state.FC.min_max[i][1] = localVector[i];
+		if(!sendMissingUpdates(MAX_SEND)){
+		    local_state.status = NORMAL;
+		}
+		//sendMissingUpdates(i + 1, lowestUpdate + 1, localVector[i]);
+	    }	    
+	}
+	else{
+	    /* mark as no updates to send */
+	    local_state.FC.min_max[i][0] = -1;
+	    local_state.FC.min_max[i][1] = -1;
+
 	}
 	//targetVector = local_state.local_update_matrix.latest_update[i];
 	//checkSendUpdates(localVector, targetVector);
@@ -1033,7 +1154,12 @@ void processRegularMessage(char * sender, int num_groups,
     else if (messagePtr->header.type == UPDATE){
 	//TODO: check reconcile
 	/* check reconcile condition */
-
+	if(messagePtr->header.proc_num == local_state.proc_ID){
+	    /* send one more update */
+	    if(!sendMissingUpdates(1)){
+		local_state.status = NORMAL;
+	    }
+	}
 	applyUpdate(mess, 1);
 
     }
@@ -1049,7 +1175,7 @@ void processRegularMessage(char * sender, int num_groups,
 	else{
 	    /* update local matrix */
 	    updateMatrix(messagePtr);
-        writeUpdateMatrix(&local_state);
+	    writeUpdateMatrix(&local_state);
 	    
 	    local_state.local_update_matrix.num_matrix_recvd ++;
 	    if (local_state.local_update_matrix.num_matrix_recvd ==
@@ -1059,10 +1185,9 @@ void processRegularMessage(char * sender, int num_groups,
 			   local_state.local_update_matrix.num_matrix_recvd);
 		}
 	      
-	        local_state.status = NORMAL;
+	        local_state.status = SENDINGUPDATES;
 		continueReconcile();
 	    }
-		//sendServerUpdates(messagePtr->header.proc_num);	      
 	}
     }
 
@@ -1302,11 +1427,20 @@ void initialize(int argc, char ** argv){
     sprintf( Spread_name, "10470"); // TODO: pull this out to config file
     //sprintf( "10470"); // TODO: pull this out to config file
 
-    
+    /* initialize flow control structure*/
+    for (i = 0 ; i < NUM_SERVERS ; i ++){
+	for (j = 0 ; j < 2 ; j ++){
+	    local_state.FC.min_max[i][j] = -1;
+	}
+    }
+
+
+    /* prepare for writing state */
     sprintf(dir_name, "./recovery_files%s", argv[1]);
     if (stat(dir_name, &st) == -1) {
         mkdir(dir_name, 0700);
     }
+
 
 
     chdir(dir_name);

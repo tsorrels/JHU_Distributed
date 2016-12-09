@@ -13,6 +13,7 @@
 #define MAX_CONNECTIONS 50
 #define MAX_COMMAND_LENGTH 30
 #define NUM_SERVERS 5
+#define MAX_SEND 25
 //#define PORT 18537
 #define PORT 10470
 
@@ -45,6 +46,7 @@
 /* System wide message types */
 typedef enum {
     RECONCILE,
+    SENDINGUPDATES,
     PARTITIONED,
     NORMAL,
 } server_status_type;
@@ -206,6 +208,10 @@ typedef struct user_vector_type{
 	user * user_head;
 } user_vector;
 
+typedef struct flow_control_type{
+    int min_max[NUM_SERVERS][2];
+} flow_control;
+
 /* State local to each server */
 typedef struct state_type{
     int proc_ID; /* this server's ID */
@@ -224,6 +230,7 @@ typedef struct state_type{
     connection connections[MAX_CONNECTIONS];
     char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
     int awaiting_updates [NUM_SERVERS]; // Probably dont need this anymore
+    flow_control FC;
 } state;
 
 
