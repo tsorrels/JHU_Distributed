@@ -53,21 +53,15 @@ int main (int argc, char ** argv)
 
     char dir_name [30];
 
+    /*
     sprintf(dir_name, "./recovery_files%s", argv[1]);
-    /*    
-    if (stat("./recovery_files", &st) == -1) {
-        mkdir("./recovery_files", 0700);
-    }
-    chdir("./recovery_files");
-
-    */
     if (stat(dir_name, &st) == -1) {
         mkdir(dir_name, 0700);
     }
 
 
     chdir(dir_name);
-    
+    */
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
     test_timeout.usec = TEST_TIMEOUT_USEC;
@@ -1263,6 +1257,10 @@ static	void	readSpreadMessage()
 void initialize(int argc, char ** argv){
     int i;
     int j;
+    struct stat st;
+
+    char dir_name [30];
+
     debug = 0;
 
     if (argc < 2){
@@ -1304,6 +1302,15 @@ void initialize(int argc, char ** argv){
     sprintf( Spread_name, "10470"); // TODO: pull this out to config file
     //sprintf( "10470"); // TODO: pull this out to config file
 
+    
+    sprintf(dir_name, "./recovery_files%s", argv[1]);
+    if (stat(dir_name, &st) == -1) {
+        mkdir(dir_name, 0700);
+    }
+
+
+    chdir(dir_name);
+    
 }
 
 
