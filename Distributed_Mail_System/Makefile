@@ -22,4 +22,4 @@ client:  $(SP_LIBRARY_DIR)/libspread-core.a client.o vector.o
 
 clean:
 	rm -f *.o server client
-	rm -rf ./recovery_files
+	rm -rf ./recovery_files*

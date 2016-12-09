@@ -50,13 +50,23 @@ int main (int argc, char ** argv)
     update *updatePtr;
     message mess;
     struct stat st;
-    
-    if (stat("./recovery_files", &st) == -1) {
-      mkdir("./recovery_files", 0700);
-    }
 
+    char dir_name [30];
+
+    sprintf(dir_name, "./recovery_files%s", argv[1]);
+    /*    
+    if (stat("./recovery_files", &st) == -1) {
+        mkdir("./recovery_files", 0700);
+    }
     chdir("./recovery_files");
 
+    */
+    if (stat(dir_name, &st) == -1) {
+        mkdir(dir_name, 0700);
+    }
+
+
+    chdir(dir_name);
     
     
     test_timeout.sec = TEST_TIMEOUT_SEC;
@@ -159,7 +169,7 @@ update * findUpdate(int procID, int updateIndex){
     targetVector = &local_state.local_update_buffer.procVectors[procID - 1];
     //targetVector = &local_state.local_update_buffer.procVectors[targetVector-1];
 
-    printf("calling update vector get\n");
+    //printf("calling update vector get\n");
     /* return pointer to update, or NULL */
     return update_vector_get(targetVector , updateIndex);	
 }
@@ -330,10 +340,7 @@ int checkMembership(int serverID){
  * the current membership */
 int checkHighestUpdate(int serverIndex, int update){
     int i;
-
-    if (debug)
-      printf("checking HighestUpdate for server index %d\n", serverIndex);
-    
+   
     for (i = 0 ; i < NUM_SERVERS ; i ++){
 	if (!checkMembership(i + 1)){
 	    continue;
@@ -348,15 +355,10 @@ int checkHighestUpdate(int serverIndex, int update){
 	      update) ||
 	     (local_state.local_update_matrix.latest_update[i][serverIndex] ==
 	      update && i > local_state.proc_ID - 1) ){
-	    if (debug)
-	        printf("checking HighestUpdate returning 1\n");
 
 	    return 0;
  	}
     }    
-
-    if (debug)
-      printf("checking HighestUpdate returning 1\n");
 
     
     return 1;
@@ -369,8 +371,6 @@ int getLowestUpdate(int serverIndex){
     int lowestUpdate = INT_MAX;
     int i;
 
-    if (debug)
-      printf("Getting lowest update for server %d\n", serverIndex);
     
     for (i = 0 ; i < NUM_SERVERS ; i ++){
         if(i == local_state.proc_ID - 1){
@@ -386,9 +386,6 @@ int getLowestUpdate(int serverIndex){
 		local_state.local_update_matrix.latest_update[i][serverIndex];
 	}
     }    
-
-    if (debug)
-      printf("In getlowestUpdate returning %d\n", lowestUpdate);
 
     
     return lowestUpdate;
@@ -410,20 +407,14 @@ void sendMissingUpdates(int procID, int min, int max){
     
     for (i = min ; i <= max ; i ++){
 	updatePtr = findUpdate(procID, i);
-	printf("returned from findUpdate\n");
 	if (updatePtr != NULL){
 	  
 	    memcpy(messagePtr->payload, updatePtr, sizeof(update));
-	    printf("memcpy complete\n");
 	    sendUpdate(messagePtr);	    
 	}	
     }
 
     free(messagePtr);
-
-    if(debug)
-      printf("finished sending missing updates\n");
-
 
 }
 
@@ -472,9 +463,6 @@ void continueReconcile(){
 
     purgeUpdateBuffer();
 
-    if (debug)
-        printf("Purged updates in continueReconcile\n");
-    
     localVector =
       local_state.local_update_matrix.latest_update[local_state.proc_ID - 1];
 
@@ -497,7 +485,6 @@ void continueReconcile(){
 	}
 	//targetVector = local_state.local_update_matrix.latest_update[i];
 	//checkSendUpdates(localVector, targetVector);
-	printf("completed loop in continueReconcile, i = %d", i);
     }
 }
 
@@ -717,7 +704,7 @@ int addMail(update * updatePtr){
     userPtr = findUser(emailPtr->to);
 
     if (debug)
-	printf("Returned from findUser\n");
+      printf("Returned from findUser\n");
 
     
     if (debug && userPtr == NULL)
@@ -727,10 +714,13 @@ int addMail(update * updatePtr){
     /* insert into user's email vector */
     if (userPtr != NULL){
 	checkError = email_vector_insert(&userPtr->emails, emailPtr);
-    if(checkError == 0)
-        writeUser(userPtr);
 	if (debug)
-	  printf("in add mail, returned from emailvectorinsert added mail to inbox of %s\n", userPtr->name);
+  	    printf("returned from vector_email_insert in addMail\n");
+	
+	if(checkError == 0)
+	    writeUser(userPtr);
+	if (debug)
+	    printf("in add mail, returned from emailvectorinsert added mail to inbox of %s\n", userPtr->name);
     }
     return checkError;
 }
