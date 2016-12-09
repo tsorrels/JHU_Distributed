@@ -487,7 +487,8 @@ int parseCommand(char *command){
     }
 
     else if(command[0] == 'm'){
-        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5){
+        if(strlen(userName) == 0 || connected == 0 || serverNum < 1 || serverNum > 5
+            || l != 1){
             printf("Incorrect use\n");
             return -1;
         }
@@ -554,13 +555,18 @@ int parseCommand(char *command){
 
 void userCommand(){
     char command[MAX_COMMAND_LENGTH];
+    int ret = 0;
     if(!wait){
         //if(r == -1)
             //displayMenu();
         //printf("\nUser> ");
         //fflush(stdout);
         gets(command);
-        parseCommand(command);
+        ret = parseCommand(command);
+        if(ret == -1){
+            printf("\nUser> ");
+            fflush(stdout);
+        }
         //while(wait);
     }
 
