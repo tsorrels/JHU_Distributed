@@ -1246,11 +1246,6 @@ void initialize(int argc, char ** argv){
     }
     local_state.local_update_matrix.num_matrix_recvd = 0;
     
-    /* initialize not waiting on any updates */
-    for (i = 0 ; i < NUM_SERVERS ; i ++){
-	local_state.awaiting_updates[i] = -1;
-    }
-
 
     sprintf(local_state.server_group, "%s", SERVER_GROUP_NAME);
 

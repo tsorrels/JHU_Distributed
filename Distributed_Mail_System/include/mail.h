@@ -14,7 +14,6 @@
 #define MAX_COMMAND_LENGTH 30
 #define NUM_SERVERS 5
 #define MAX_SEND 25
-//#define PORT 18537
 #define PORT 10470
 
 #define TEST_TIMEOUT_SEC 5
@@ -79,16 +78,6 @@ typedef enum {
     SHOWMEMBERSHIPCMD,	// does not modify state
 } command_type;
 
-/******* DRAFT **********/
-typedef struct connection_type {
-    char private_group [SIZE_PRIVATE_GROUP];  // spread private group
-    char current_user [SIZE_PRIVATE_GROUP];
-} connection;
-
-/******* DRAFT **********/
-typedef struct connect_payload_type {
-    char private_group [SIZE_PRIVATE_GROUP] ;
-} connect_payload;
 
 
 /* Header for all system wide messages, sent through spread */
@@ -113,8 +102,6 @@ typedef struct mail_id_type{
 /* Structure for update */
 typedef struct update_type{
     update_type type;
-    //int procID;
-    //int updateIndex;
     char user_name[MAX_USER_LENGTH];
     mail_id mailID;
     char payload[UPDATE_PAYLOAD_SIZE];
@@ -133,11 +120,6 @@ typedef struct update_vector_type{
 /* Structure to cache updates from all processes */
 typedef struct update_buffer_type{
     update_vector procVectors [NUM_SERVERS];
-    update proc1[MAX_UPDATE];
-    update proc2[MAX_UPDATE];
-    update proc3[MAX_UPDATE];
-    update proc4[MAX_UPDATE];
-    update proc5[MAX_UPDATE];
 } update_buffer;
 
 /* Structure to maintain latest update index from all processes */
@@ -153,13 +135,9 @@ typedef struct update_matrix_type{
 typedef struct email_type{
     int read;
     mail_id mailID;
-    //int procCreated;
-    //int emailIndex;
     char from[MAX_USER_LENGTH];
     char to[MAX_USER_LENGTH];
     char subject[MAX_SUBJECT_LENGTH];
-    //int date;
-    //int valid;
     char message[MAX_MESSAGE_SIZE];
     struct email_type * next;
 } email;
@@ -169,11 +147,7 @@ typedef struct command_type{
     command_type type;
     int ret;
     char user_name[MAX_USER_LENGTH];
-    /*char send_to[MAX_USER_LENGTH];
-    char subject[MAX_SUBJECT_LENGTH];
-    mail_id mailID;*/
     char payload[UPDATE_PAYLOAD_SIZE];
-    //email mail;
     char private_group[SIZE_PRIVATE_GROUP];
 } command;
 
@@ -192,7 +166,6 @@ typedef struct email_vector_type{
 /* user data type*/
 typedef struct user_type{
     char name [MAX_USER_LENGTH];
-    //email emails[MAX_EMAILS];
     email_vector emails;
     struct user_type * next;
 } user;
@@ -219,17 +192,11 @@ typedef struct state_type{
     char server_group[MAX_GROUP_NAME]; /* spread group name for server */
     char private_group[MAX_GROUP_NAME]; /* server's private group */
     int updateIndex; /* counter of updates received, for LTS */
-    //user_entry users[MAX_USERS];
     user_vector users;
     update_matrix local_update_matrix;
     update_buffer local_update_buffer;
     int recoveryFD;
-    /*int userListFD;
-    int updateMatrixFD;
-    int updateBufferFD;*/
-    connection connections[MAX_CONNECTIONS];
     char current_membership [NUM_SERVERS][MAX_GROUP_NAME];
-    int awaiting_updates [NUM_SERVERS]; // Probably dont need this anymore
     flow_control FC;
 } state;
 
